@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { FetchDataSteps } from "@/src/components/tutorial/fetch-data-steps";
+import { createClient } from "@/src/lib/supabase/server";
 import { InfoIcon } from "lucide-react";
-import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
