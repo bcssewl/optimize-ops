@@ -1,4 +1,5 @@
 import { AppFooter } from "@/src/components/app-footer";
+import { AuthProvider } from "@/src/context/AuthContext";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Geist } from "next/font/google";
@@ -28,16 +29,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased bg-white`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AppNav />
-          <main className="min-h-[80vh] flex flex-col flex-1">{children}</main>
-          <AppFooter />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AppNav />
+            <main className="min-h-[80vh] flex flex-col flex-1">
+              {children}
+            </main>
+            <AppFooter />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
