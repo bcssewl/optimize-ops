@@ -1,4 +1,5 @@
 "use client";
+import { SupervisorDashboard } from "@/src/components/dashboard/SupervisorDashboard";
 import { SupervisorProductivity } from "@/src/components/dashboard/SupervisorProductivity";
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
@@ -159,7 +160,7 @@ export default function DashboardPage() {
 
   if (user?.role === "staff") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh]">
+      <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
         <h1 className="text-3xl font-bold mb-2">Welcome!</h1>
         <p className="text-lg text-gray-600 text-center max-w-md">
           Please ask your admin or manager to assign you a role.
@@ -170,11 +171,8 @@ export default function DashboardPage() {
 
   if (user?.role === "supervisor") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh]">
-        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-          <span className="text-2xl font-bold">{stats.myTargets}</span>
-          <span className="text-gray-600">Targets assigned to you</span>
-        </div>
+      <div className="flex flex-col items-start justify-start py-8 px-8 min-h-[40vh] w-full">
+        <SupervisorDashboard />
       </div>
     );
   }
