@@ -1,3 +1,5 @@
+import { AppFooter } from "@/src/components/app-footer";
+import { AppNav } from "@/src/components/app-nav";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Geist } from "next/font/google";
@@ -32,7 +34,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AppNav />
+          <main className="min-h-[80vh] flex flex-col flex-1">{children}</main>
+          <AppFooter />
         </ThemeProvider>
       </body>
     </html>
