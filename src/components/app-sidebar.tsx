@@ -10,11 +10,8 @@ import {
 } from "@/src/components/ui/sidebar";
 import {
   faBuilding,
-  faFileUpload,
-  faKey,
-  faPhone,
+  faBullseye,
   faTableColumns,
-  faUserEdit,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -25,7 +22,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="relative">
       <SidebarContent className="bg-background">
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -44,102 +41,46 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/calls">
+                  <Link href="/departments">
                     <FontAwesomeIcon
-                      icon={faPhone}
+                      icon={faBuilding}
                       size="lg"
                       className="mr-2 text-primary"
                     />
                     <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                      Calls
+                      Departments
                     </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/upload-transcript">
+                  <Link href="/users">
                     <FontAwesomeIcon
-                      icon={faFileUpload}
+                      icon={faUsers}
                       size="lg"
                       className="mr-2 text-primary"
                     />
                     <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                      Upload Transcript
+                      Users
                     </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarGroupLabel className="mt-4">
-                Organization
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/organization">
-                        <FontAwesomeIcon
-                          icon={faBuilding}
-                          size="lg"
-                          className="mr-2 text-primary"
-                        />
-                        <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                          Overview
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/organization/teams">
-                        <FontAwesomeIcon
-                          icon={faUsers}
-                          size="lg"
-                          className="mr-2 text-primary"
-                        />
-                        <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                          Teams
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-              <SidebarGroupLabel className="mt-4">
-                Account Settings
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/account/update-profile">
-                        <FontAwesomeIcon
-                          icon={faUserEdit}
-                          size="lg"
-                          className="mr-2 text-primary"
-                        />
-                        <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                          Update Profile
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/account/change-password">
-                        <FontAwesomeIcon
-                          icon={faKey}
-                          size="lg"
-                          className="mr-2 text-primary"
-                        />
-                        <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                          Change Password
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/targets">
+                    <FontAwesomeIcon
+                      icon={faBullseye}
+                      size="lg"
+                      className="mr-2 text-primary"
+                    />
+                    <span className="group-data-[collapsible=icon]/sidebar:hidden">
+                      Targets
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
