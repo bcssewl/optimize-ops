@@ -61,7 +61,9 @@ export function LoginForm({
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
-            <GooglePrebuiltButton text="signin_with" />
+            <div className="w-full">
+              <GooglePrebuiltButton text="signin_with" className="w-full" />
+            </div>
             <div className="flex items-center my-4">
               <div className="flex-grow border-t border-gray-300 dark:border-gray-700" />
               <span className="mx-2 text-xs text-gray-400">or</span>

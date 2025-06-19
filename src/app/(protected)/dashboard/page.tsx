@@ -179,9 +179,11 @@ export default function DashboardPage() {
 
   // Default fallback
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh]">
-      <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
-      <p className="text-lg text-gray-600">Welcome to your dashboard! 🚀</p>
+    <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
+      <h1 className="text-3xl font-bold mb-2">Welcome!</h1>
+      <p className="text-lg text-gray-600 text-center max-w-md">
+        Please ask your admin or manager to assign you a role.
+      </p>
     </div>
   );
 }

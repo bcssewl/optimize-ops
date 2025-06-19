@@ -15,10 +15,12 @@ declare global {
 
 interface GooglePrebuiltButtonProps {
   text?: "signin_with" | "signup_with";
+  className?: string;
 }
 
 const GooglePrebuiltButton = ({
   text = "signin_with",
+  className = "",
 }: GooglePrebuiltButtonProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -103,7 +105,7 @@ const GooglePrebuiltButton = ({
           }
         }}
       />
-      <div ref={buttonRef} />
+      <div ref={buttonRef} className={className} />
     </>
   );
 };
