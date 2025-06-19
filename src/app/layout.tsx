@@ -1,8 +1,8 @@
 import { AppFooter } from "@/src/components/app-footer";
-import { AppNav } from "@/src/components/app-nav";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Geist } from "next/font/google";
+import AppNav from "../components/app-nav";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL

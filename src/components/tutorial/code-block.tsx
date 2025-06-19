@@ -6,8 +6,9 @@ import { Button } from "../ui/button";
 const CopyIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
+    width={20}
+    height={20}
+    style={{ width: 20, height: 20, minWidth: 20, minHeight: 20 }}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -23,8 +24,9 @@ const CopyIcon = () => (
 const CheckIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
+    width={20}
+    height={20}
+    style={{ width: 20, height: 20, minWidth: 20, minHeight: 20 }}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

@@ -2,8 +2,9 @@ export function SupabaseLogo() {
   return (
     <svg
       aria-label="Supabase logo"
-      width="140"
-      height="30"
+      width={140}
+      height={30}
+      style={{ width: 140, height: 30, minWidth: 140, minHeight: 30 }}
       viewBox="0 0 115 23"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

@@ -6,14 +6,6 @@ export function AppFooter() {
           &copy; {new Date().getFullYear()} OptimizeOps. All rights reserved.
         </div>
         <div className="flex gap-4">
-          <a
-            href="https://supabase.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline font-semibold"
-          >
-            Powered by Supabase
-          </a>
           <a href="/privacy" className="hover:underline">
             Privacy Policy
           </a>
