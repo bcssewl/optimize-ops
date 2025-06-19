@@ -1,6 +1,9 @@
-"use client";
+import { createClient } from "@/src/lib/supabase/server";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+
   return (
     <div className="container mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>

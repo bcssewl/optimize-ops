@@ -2,14 +2,22 @@ import { AuthButton } from "@/src/components/auth-button";
 import { DeployButton } from "@/src/components/deploy-button";
 import { EnvVarWarning } from "@/src/components/env-var-warning";
 import { ThemeSwitcher } from "@/src/components/theme-switcher";
+import { createClient } from "@/src/lib/supabase/server";
 import { hasEnvVars } from "@/src/lib/utils";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) {
+    redirect("/auth/login");
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center">
       <div className="flex-1 w-full flex flex-col gap-20 items-center">
