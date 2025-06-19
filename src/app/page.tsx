@@ -31,7 +31,7 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <section className="max-w-5xl mx-auto px-4 py-20 flex flex-col md:flex-row items-center gap-12">
+      <section className="max-w-5xl mx-auto px-4 py-24 flex flex-col md:flex-row items-center gap-12">
         <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto justify-center">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
             Boost Employee Productivity with Smart Daily Voice Updates
@@ -48,7 +48,8 @@ export default function LandingPage() {
                 className="text-lg px-8 py-4 flex items-center gap-2"
               >
                 <Link href="/dashboard">
-                  <FontAwesomeIcon icon={faRocket} /> Go to Dashboard
+                  <FontAwesomeIcon icon={faRocket} width={20} height={20} /> Go
+                  to Dashboard
                 </Link>
               </Button>
             ) : (
@@ -59,7 +60,8 @@ export default function LandingPage() {
                   className="text-lg px-8 py-4 flex items-center gap-2"
                 >
                   <Link href="/auth/sign-up">
-                    <FontAwesomeIcon icon={faRocket} /> Get Started Free
+                    <FontAwesomeIcon icon={faRocket} width={20} height={20} />{" "}
+                    Get Started Free
                   </Link>
                 </Button>
                 <Button
@@ -69,7 +71,8 @@ export default function LandingPage() {
                   className="text-lg px-8 py-4 flex items-center gap-2"
                 >
                   <Link href="/auth/login">
-                    <FontAwesomeIcon icon={faVideo} /> Watch Demo
+                    <FontAwesomeIcon icon={faVideo} width={20} height={20} />{" "}
+                    Watch Demo
                   </Link>
                 </Button>
               </>
@@ -78,7 +81,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-2 gap-8">
+      <section className="max-w-4xl mx-auto px-4 py-24 grid md:grid-cols-2 gap-8">
         <div>
           <h2 className="text-2xl font-bold mb-4 text-red-600">
             Pain Points We Solve
@@ -88,6 +91,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faTimesCircle}
                 className="text-red-500 mr-2"
+                width={20}
+                height={20}
               />
               Managers struggle to track daily progress effectively
             </li>
@@ -95,6 +100,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faTimesCircle}
                 className="text-red-500 mr-2"
+                width={20}
+                height={20}
               />
               Admins lack a clear view of team performance across departments
             </li>
@@ -102,6 +109,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faTimesCircle}
                 className="text-red-500 mr-2"
+                width={20}
+                height={20}
               />
               Employees find written reports tedious and time-consuming
             </li>
@@ -109,6 +118,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faTimesCircle}
                 className="text-red-500 mr-2"
+                width={20}
+                height={20}
               />
               Progress often goes undocumented or underreported
             </li>
@@ -121,13 +132,41 @@ export default function LandingPage() {
           <p className="mb-2">
             Let your team speak, we’ll take care of the rest.
           </p>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
-            <li>Admins create departments and assign users.</li>
-            <li>Managers and employees record short daily voice updates.</li>
+          <ul className="list-none pl-5 space-y-2 text-gray-700 dark:text-gray-300">
             <li>
+              <FontAwesomeIcon
+                icon={faCheckCircle}
+                className="text-green-500 mr-2"
+                width={20}
+                height={20}
+              />
+              Admins create departments and assign users.
+            </li>
+            <li>
+              <FontAwesomeIcon
+                icon={faCheckCircle}
+                className="text-green-500 mr-2"
+                width={20}
+                height={20}
+              />
+              Managers and employees record short daily voice updates.
+            </li>
+            <li>
+              <FontAwesomeIcon
+                icon={faCheckCircle}
+                className="text-green-500 mr-2"
+                width={20}
+                height={20}
+              />
               Our system automatically uploads and analyzes the voice content.
             </li>
             <li>
+              <FontAwesomeIcon
+                icon={faCheckCircle}
+                className="text-green-500 mr-2"
+                width={20}
+                height={20}
+              />
               Actionable reports are generated for admins, managers, and
               individuals — with zero manual effort.
             </li>
@@ -135,27 +174,37 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto px-4 py-12">
+      <section className="max-w-4xl mx-auto px-4 py-24">
         <h2 className="text-2xl font-bold mb-6 text-center">How It Works</h2>
-        <ol className="space-y-6 text-lg text-gray-700 dark:text-gray-300 list-decimal list-inside">
+        <ol className="space-y-6 text-lg text-gray-700 dark:text-gray-300 list-inside list-none">
           <li>
-            <FontAwesomeIcon icon={faBuilding} className="text-blue-500 mr-2" />
-            <span className="font-semibold">
-              Setup Your Team Structure:
-            </span>{" "}
+            <FontAwesomeIcon
+              icon={faBuilding}
+              className="text-blue-500 mr-2"
+              width={20}
+              height={20}
+            />
+            <span className="font-semibold">Setup Your Team Structure:</span>{" "}
             Admins create departments and assign users with clear targets.
           </li>
           <li>
             <FontAwesomeIcon
               icon={faMicrophone}
               className="text-green-500 mr-2"
+              width={20}
+              height={20}
             />
             <span className="font-semibold">Record Daily Updates:</span>{" "}
             Supervisors and managers submit updates via voice recordings — quick
             and easy.
           </li>
           <li>
-            <FontAwesomeIcon icon={faBrain} className="text-purple-500 mr-2" />
+            <FontAwesomeIcon
+              icon={faBrain}
+              className="text-purple-500 mr-2"
+              width={20}
+              height={20}
+            />
             <span className="font-semibold">Smart AI Analysis:</span> The system
             transcribes, analyzes tone, detects key metrics, and evaluates
             progress.
@@ -164,6 +213,8 @@ export default function LandingPage() {
             <FontAwesomeIcon
               icon={faChartBar}
               className="text-yellow-500 mr-2"
+              width={20}
+              height={20}
             />
             <span className="font-semibold">Real-Time Reporting:</span> Admins
             and users see clean dashboards, trends, and individual reports.
@@ -171,14 +222,16 @@ export default function LandingPage() {
         </ol>
       </section>
 
-      <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-8">
+      <section className="max-w-4xl mx-auto px-4 py-24 grid md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-xl font-bold mb-2 text-blue-700">For Admins</h3>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+          <ul className="list-none pl-5 space-y-2 text-gray-700 dark:text-gray-300">
             <li>
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Department-wide visibility
             </li>
@@ -186,6 +239,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Easy performance tracking
             </li>
@@ -193,6 +248,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Centralized voice updates
             </li>
@@ -202,11 +259,13 @@ export default function LandingPage() {
           <h3 className="text-xl font-bold mb-2 text-green-700">
             For Managers & Supervisors
           </h3>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+          <ul className="list-none pl-5 space-y-2 text-gray-700 dark:text-gray-300">
             <li>
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Hassle-free reporting via voice
             </li>
@@ -214,6 +273,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Automatic insights generation
             </li>
@@ -221,6 +282,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Trend tracking over time
             </li>
@@ -230,11 +293,13 @@ export default function LandingPage() {
           <h3 className="text-xl font-bold mb-2 text-purple-700">
             For Team Members
           </h3>
-          <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+          <ul className="list-none pl-5 space-y-2 text-gray-700 dark:text-gray-300">
             <li>
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               See personal progress & feedback
             </li>
@@ -242,6 +307,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               No need to write lengthy updates
             </li>
@@ -249,6 +316,8 @@ export default function LandingPage() {
               <FontAwesomeIcon
                 icon={faCheckCircle}
                 className="text-green-500 mr-2"
+                width={20}
+                height={20}
               />
               Feel heard and recognized
             </li>
@@ -256,13 +325,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto px-4 py-12">
+      <section className="max-w-4xl mx-auto px-4 py-24">
         <h2 className="text-2xl font-bold mb-6 text-center">Key Features</h2>
         <ul className="grid md:grid-cols-3 gap-6 text-lg text-gray-700 dark:text-gray-300">
           <li>
             <FontAwesomeIcon
               icon={faMicrophone}
               className="text-blue-500 mr-2"
+              width={20}
+              height={20}
             />
             Voice-based daily updates
           </li>
@@ -270,17 +341,26 @@ export default function LandingPage() {
             <FontAwesomeIcon
               icon={faChartBar}
               className="text-green-500 mr-2"
+              width={20}
+              height={20}
             />
             Automated report generation
           </li>
           <li>
-            <FontAwesomeIcon icon={faBrain} className="text-purple-500 mr-2" />
+            <FontAwesomeIcon
+              icon={faBrain}
+              className="text-purple-500 mr-2"
+              width={20}
+              height={20}
+            />
             AI-based sentiment & progress analysis
           </li>
           <li>
             <FontAwesomeIcon
               icon={faBuilding}
               className="text-yellow-500 mr-2"
+              width={20}
+              height={20}
             />
             Department & user-level dashboards
           </li>
@@ -288,6 +368,8 @@ export default function LandingPage() {
             <FontAwesomeIcon
               icon={faLock}
               className="text-gray-700 dark:text-gray-300 mr-2"
+              width={20}
+              height={20}
             />
             Secure uploads and access control
           </li>
@@ -295,67 +377,25 @@ export default function LandingPage() {
             <FontAwesomeIcon
               icon={faHistory}
               className="text-gray-700 dark:text-gray-300 mr-2"
+              width={20}
+              height={20}
             />
             History of all updates per user
           </li>
         </ul>
       </section>
 
-      <section className="max-w-3xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-bold mb-6 text-center">Testimonials</h2>
-        <div className="space-y-6">
-          <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-800 dark:text-gray-200">
-            "This tool changed how we operate. Daily updates take under a minute
-            and the insights are gold."
-            <span className="block mt-2 font-semibold">
-              — Samantha T., Team Lead
-            </span>
-          </blockquote>
-          <blockquote className="border-l-4 border-green-500 pl-4 italic text-gray-800 dark:text-gray-200">
-            "Managing multiple departments was a nightmare. Now I get clear
-            summaries every day."
-            <span className="block mt-2 font-semibold">
-              — Rahul M., Admin Head
-            </span>
-          </blockquote>
-        </div>
-      </section>
-
-      <section className="max-w-4xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-6 text-lg text-gray-700 dark:text-gray-300">
-          <div>
-            <span className="font-semibold">
-              Q: Do users need to type reports?
-            </span>
-            <br />
-            A: Nope! Just talk — the system transcribes and analyzes everything.
-          </div>
-          <div>
-            <span className="font-semibold">
-              Q: Is this tool suitable for remote teams?
-            </span>
-            <br />
-            A: Absolutely! Voice updates from anywhere, synced in real-time.
-          </div>
-          <div>
-            <span className="font-semibold">
-              Q: Can I customize department targets?
-            </span>
-            <br />
-            A: Yes. Admins set unique targets per user or department.
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-3xl mx-auto px-4 py-16 text-center">
+      <section className="max-w-3xl mx-auto px-4 py-24 text-center">
         <h2 className="text-3xl font-bold mb-4">
           Ready to transform your team's productivity?
         </h2>
         <p className="text-lg mb-6">
-          <FontAwesomeIcon icon={faBullseye} className="text-pink-500 mr-2" />
+          <FontAwesomeIcon
+            icon={faBullseye}
+            className="text-pink-500 mr-2"
+            width={20}
+            height={20}
+          />
           Start tracking with voice. Save hours. Get real insights.
         </p>
         <div className="flex flex-col md:flex-row gap-4 justify-center">
@@ -365,7 +405,8 @@ export default function LandingPage() {
             className="text-lg px-8 py-4 flex items-center gap-2"
           >
             <Link href="/auth/sign-up">
-              <FontAwesomeIcon icon={faRocket} /> Get Started Free
+              <FontAwesomeIcon icon={faRocket} width={20} height={20} /> Get
+              Started Free
             </Link>
           </Button>
           <Button
@@ -375,7 +416,8 @@ export default function LandingPage() {
             className="text-lg px-8 py-4 flex items-center gap-2"
           >
             <Link href="/auth/login">
-              <FontAwesomeIcon icon={faVideo} /> Book a Demo
+              <FontAwesomeIcon icon={faVideo} width={20} height={20} /> Book a
+              Demo
             </Link>
           </Button>
         </div>
