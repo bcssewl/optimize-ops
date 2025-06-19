@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 interface Department {
   id: number;
-  name: string;
+  title: string;
 }
 
 interface User {
@@ -71,7 +71,7 @@ export default function UsersPage() {
       supabase
         .from("users")
         .select("id, created_at, uuid, email, department_id, role"),
-      supabase.from("departments").select("id, name"),
+      supabase.from("departments").select("id, title"),
     ]);
     if (usersError) toast.error("Failed to fetch users");
     if (departmentsError) toast.error("Failed to fetch departments");
@@ -90,7 +90,7 @@ export default function UsersPage() {
       setLoading(true);
       const { data: departmentsData, error: departmentsError } = await supabase
         .from("departments")
-        .select("id, name");
+        .select("id, title");
       if (departmentsError) toast.error("Failed to fetch departments");
       setDepartments(departmentsData || []);
       setLoading(false);
@@ -127,7 +127,7 @@ export default function UsersPage() {
       <p className="text-muted-foreground mb-6">
         Manage your organization's users
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
         <Card>
           <CardContent className="flex items-center gap-4 py-6">
             <div className="bg-blue-100 rounded-lg p-3">
@@ -263,7 +263,7 @@ export default function UsersPage() {
                           <SelectItem value="none">None</SelectItem>
                           {departments.map((dept) => (
                             <SelectItem key={dept.id} value={String(dept.id)}>
-                              {dept.name}
+                              {dept.title}
                             </SelectItem>
                           ))}
                         </SelectContent>
