@@ -1,36 +1,56 @@
 import { useAuth } from "@/src/context/AuthContext";
+import {
+  faChartBar,
+  faCog,
+  faDollarSign,
+  faEnvelope,
+  faFilter,
+  faHeart,
+  faStar,
+  faUpload,
+  faUsers,
+  faUserShield,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const targetsOverview = [
   {
     label: "Sales Target",
     value: "$125K",
     color: "bg-blue-600",
-    icon: <span className="text-white">$</span>,
+    icon: <FontAwesomeIcon icon={faDollarSign} width={24} height={24} />,
   },
   {
     label: "Customer Satisfaction",
     value: "95%",
     color: "bg-green-600",
-    icon: <span className="text-white">❤</span>,
+    icon: <FontAwesomeIcon icon={faHeart} width={24} height={24} />,
   },
   {
     label: "Team Productivity",
     value: "88%",
     color: "bg-orange-500",
-    icon: <span className="text-white">👥</span>,
+    icon: <FontAwesomeIcon icon={faUsers} width={24} height={24} />,
   },
   {
     label: "Quality Score",
     value: "92%",
     color: "bg-purple-600",
-    icon: <span className="text-white">★</span>,
+    icon: <FontAwesomeIcon icon={faStar} width={24} height={24} />,
   },
 ];
 
 const targets = [
   {
     name: "Monthly Sales",
-    icon: <span className="text-blue-600">$</span>,
+    icon: (
+      <FontAwesomeIcon
+        icon={faDollarSign}
+        width={20}
+        height={20}
+        className="text-blue-600"
+      />
+    ),
     current: "$98,500",
     target: "$125,000",
     progress: 78.8,
@@ -40,7 +60,14 @@ const targets = [
   },
   {
     name: "Customer Satisfaction",
-    icon: <span className="text-green-600">❤</span>,
+    icon: (
+      <FontAwesomeIcon
+        icon={faHeart}
+        width={20}
+        height={20}
+        className="text-green-600"
+      />
+    ),
     current: "95.2%",
     target: "95.0%",
     progress: 100.2,
@@ -50,7 +77,14 @@ const targets = [
   },
   {
     name: "Team Productivity",
-    icon: <span className="text-orange-500">👥</span>,
+    icon: (
+      <FontAwesomeIcon
+        icon={faUsers}
+        width={20}
+        height={20}
+        className="text-orange-500"
+      />
+    ),
     current: "88.3%",
     target: "90.0%",
     progress: 98.1,
@@ -60,7 +94,14 @@ const targets = [
   },
   {
     name: "Quality Score",
-    icon: <span className="text-purple-600">★</span>,
+    icon: (
+      <FontAwesomeIcon
+        icon={faStar}
+        width={20}
+        height={20}
+        className="text-purple-600"
+      />
+    ),
     current: "92.1%",
     target: "95.0%",
     progress: 97.0,
@@ -86,20 +127,13 @@ export function SupervisorDashboard() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-4 py-2 min-w-[220px]">
               <span className="bg-blue-100 p-2 rounded-full">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <path d="M4 4h16v16H4V4z" fill="#e0e7ff" />
-                  <path d="M4 4h16v16H4V4z" stroke="#3b82f6" strokeWidth="2" />
-                  <path d="M4 8h16" stroke="#3b82f6" strokeWidth="2" />
-                </svg>
+                <FontAwesomeIcon icon={faEnvelope} width={20} height={20} />
               </span>
               <span className="text-gray-700">{user.email}</span>
             </div>
             <div className="flex items-center gap-2 bg-green-50 rounded-lg px-4 py-2 min-w-[180px]">
               <span className="bg-green-100 p-2 rounded-full">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" fill="#bbf7d0" />
-                  <path d="M12 7v5l3 3" stroke="#22c55e" strokeWidth="2" />
-                </svg>
+                <FontAwesomeIcon icon={faUserShield} width={20} height={20} />
               </span>
               <span className="text-gray-700">
                 Role <span className="font-bold">{user.role ?? "-"}</span>
@@ -137,15 +171,7 @@ export function SupervisorDashboard() {
         <div className="flex items-center justify-between mb-4">
           <div className="font-semibold text-lg">All Targets</div>
           <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 rounded px-3 py-1 text-sm font-medium">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="#64748b" strokeWidth="2" />
-              <path
-                d="M8 12h8"
-                stroke="#64748b"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <FontAwesomeIcon icon={faFilter} width={16} height={16} />
             Filter
           </button>
         </div>
@@ -199,41 +225,15 @@ export function SupervisorDashboard() {
       {/* Action Buttons */}
       <div className="flex flex-col md:flex-row gap-4 mt-4">
         <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-            <path
-              d="M12 5v14M5 12h14"
-              stroke="#fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          <FontAwesomeIcon icon={faUpload} width={20} height={20} />
           Upload Record
         </button>
         <button className="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-            <rect
-              x="4"
-              y="4"
-              width="16"
-              height="16"
-              rx="2"
-              stroke="#fff"
-              strokeWidth="2"
-            />
-            <path d="M8 8h8v8H8V8z" stroke="#fff" strokeWidth="2" />
-          </svg>
+          <FontAwesomeIcon icon={faChartBar} width={20} height={20} />
           View Reports
         </button>
         <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2" />
-            <path
-              d="M12 8v4l3 3"
-              stroke="#fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          <FontAwesomeIcon icon={faCog} width={20} height={20} />
           Settings
         </button>
       </div>
