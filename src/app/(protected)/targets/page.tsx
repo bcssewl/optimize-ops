@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/src/components/ui/table";
 import { createClient } from "@/src/lib/supabase/client";
-import { faBullseye, faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faBullseye, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +33,7 @@ interface User {
   email: string;
   uuid: string;
   role?: string;
+  department_id?: number;
 }
 
 interface Target {
@@ -60,6 +61,9 @@ export default function TargetsPage() {
   const supabase = createClient();
   const [users, setUsers] = useState<User[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
+  const [departments, setDepartments] = useState<
+    { id: number; title: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [modalUser, setModalUser] = useState<User | null>(null);
   const [viewUser, setViewUser] = useState<User | null>(null);
@@ -80,16 +84,20 @@ export default function TargetsPage() {
       const [
         { data: usersData, error: usersError },
         { data: targetsData, error: targetsError },
+        { data: departmentsData, error: departmentsError },
       ] = await Promise.all([
-        supabase.from("users").select("id, email, uuid, role"),
+        supabase.from("users").select("id, email, uuid, role, department_id"),
         supabase
           .from("targets")
           .select("id, user_uuid, target_name, target_value, created_at"),
+        supabase.from("departments").select("id, title"),
       ]);
       if (usersError) toast.error("Failed to fetch users");
       if (targetsError) toast.error("Failed to fetch targets");
+      if (departmentsError) toast.error("Failed to fetch departments");
       setUsers(usersData || []);
       setTargets(targetsData || []);
+      setDepartments(departmentsData || []);
       setLoading(false);
     };
     fetchData();
@@ -128,9 +136,6 @@ export default function TargetsPage() {
             Manage user targets and track progress
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-          <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add New Target
-        </Button>
       </div>
       <div className="bg-white rounded-xl border p-0">
         <div>
@@ -168,8 +173,24 @@ export default function TargetsPage() {
                           {/* Optionally add avatar here */}
                           <div>
                             <div className="font-medium">{user.email}</div>
-                            <div className="text-xs text-muted-foreground">
-                              Active
+                            <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
+                              {(() => {
+                                const dept = departments.find(
+                                  (d) => d.id === user.department_id
+                                );
+                                return dept ? (
+                                  <span>
+                                    <strong>Department</strong> - {dept.title}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {user.role ? (
+                                <span>
+                                  <strong>Role</strong> -{" "}
+                                  {user.role.charAt(0).toUpperCase() +
+                                    user.role.slice(1)}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -211,10 +232,26 @@ export default function TargetsPage() {
                             <DialogHeader>
                               <DialogTitle>Add Target</DialogTitle>
                             </DialogHeader>
-                            <div className="mb-4">
+                            <div className="mb-4 flex flex-col gap-1">
                               <div className="font-medium">{user.email}</div>
-                              <div className="text-xs text-muted-foreground mb-2">
-                                Role: {user.role || "N/A"}
+                              <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
+                                {(() => {
+                                  const dept = departments.find(
+                                    (d) => d.id === user.department_id
+                                  );
+                                  return dept ? (
+                                    <span>
+                                      <strong>Department</strong> - {dept.title}
+                                    </span>
+                                  ) : null;
+                                })()}
+                                {user.role ? (
+                                  <span>
+                                    <strong>Role</strong> -{" "}
+                                    {user.role.charAt(0).toUpperCase() +
+                                      user.role.slice(1)}
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                             <form
