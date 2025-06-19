@@ -15,14 +15,13 @@ import {
   faVideo,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
       <section className="max-w-5xl mx-auto px-4 py-20 flex flex-col md:flex-row items-center gap-12">
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto justify-center items-center">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-2">
             Boost Employee Productivity with Smart Daily Voice Updates
           </h1>
@@ -51,15 +50,6 @@ export default function LandingPage() {
               </Link>
             </Button>
           </div>
-        </div>
-        <div className="flex-1 flex justify-center">
-          <Image
-            src="/dashboard-mockup.png"
-            alt="Dashboard mockup"
-            width={480}
-            height={320}
-            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800"
-          />
         </div>
       </section>
 
