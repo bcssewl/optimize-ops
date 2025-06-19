@@ -51,6 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
     getUser();
+
+    // Listen for auth state changes and update user state
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      getUser();
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   return (
