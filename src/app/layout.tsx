@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Geist } from "next/font/google";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
-
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Smart Productivity Tracker for Teams | Voice-Based Daily Updates",
+  description:
+    "Optimize team productivity using voice updates, AI analysis, and real-time reports. Create departments, assign targets, and track progress effortlessly.",
 };
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   display: "swap",
