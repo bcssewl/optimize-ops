@@ -11,6 +11,7 @@ import {
 import {
   faBuilding,
   faBullseye,
+  faMicrophone,
   faTableColumns,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
@@ -77,6 +78,20 @@ export function AppSidebar() {
                     />
                     <span className="group-data-[collapsible=icon]/sidebar:hidden">
                       Targets
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/upload-record">
+                    <FontAwesomeIcon
+                      icon={faMicrophone}
+                      size="lg"
+                      className="mr-2 text-primary"
+                    />
+                    <span className="group-data-[collapsible=icon]/sidebar:hidden">
+                      Upload Record
                     </span>
                   </Link>
                 </SidebarMenuButton>
