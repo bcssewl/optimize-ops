@@ -297,7 +297,11 @@ export default function UsersPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {ROLE_OPTIONS.map((role) => (
-                            <SelectItem key={role.value} value={role.value}>
+                            <SelectItem
+                              key={role.value}
+                              value={role.value}
+                              disabled={role.value === "admin"}
+                            >
                               {role.label}
                             </SelectItem>
                           ))}
