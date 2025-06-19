@@ -1,13 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
-import { createClient } from "@/src/lib/supabase/client";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBullseye, faPlus, faEye } from "@fortawesome/free-solid-svg-icons";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +8,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/src/components/ui/dialog";
+import ErrorText from "@/src/components/ui/error-text";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
-import ErrorText from "@/src/components/ui/error-text";
-import { useForm } from "react-hook-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import { createClient } from "@/src/lib/supabase/client";
+import { faBullseye, faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import * as yup from "yup";
 
 interface User {
@@ -34,6 +40,7 @@ interface Target {
   user_uuid: string;
   target_name: string;
   target_value: number;
+  created_at?: string;
 }
 
 interface AddTargetFormValues {
@@ -55,17 +62,29 @@ export default function TargetsPage() {
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalUser, setModalUser] = useState<User | null>(null);
+  const [viewUser, setViewUser] = useState<User | null>(null);
   const form = useForm<AddTargetFormValues>({
     resolver: yupResolver(schema),
     defaultValues: { target_name: "", target_value: undefined },
   });
 
+  // Memoized user targets for view modal
+  const viewUserTargets = useMemo(() => {
+    if (!viewUser) return [];
+    return targets.filter((t) => t.user_uuid === viewUser.uuid);
+  }, [viewUser, targets]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [{ data: usersData, error: usersError }, { data: targetsData, error: targetsError }] = await Promise.all([
+      const [
+        { data: usersData, error: usersError },
+        { data: targetsData, error: targetsError },
+      ] = await Promise.all([
         supabase.from("users").select("id, email, uuid, role"),
-        supabase.from("targets").select("id, user_uuid, target_name, target_value"),
+        supabase
+          .from("targets")
+          .select("id, user_uuid, target_name, target_value, created_at"),
       ]);
       if (usersError) toast.error("Failed to fetch users");
       if (targetsError) toast.error("Failed to fetch targets");
@@ -89,7 +108,9 @@ export default function TargetsPage() {
       toast.success("Target added");
       setModalUser(null);
       form.reset();
-      const { data: targetsData } = await supabase.from("targets").select("id, user_uuid, target_name, target_value");
+      const { data: targetsData } = await supabase
+        .from("targets")
+        .select("id, user_uuid, target_name, target_value");
       setTargets(targetsData || []);
     }
   };
@@ -103,7 +124,9 @@ export default function TargetsPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Targets Management</h1>
-          <p className="text-muted-foreground">Manage user targets and track progress</p>
+          <p className="text-muted-foreground">
+            Manage user targets and track progress
+          </p>
         </div>
         <Button className="bg-blue-600 hover:bg-blue-700 text-white">
           <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add New Target
@@ -111,7 +134,9 @@ export default function TargetsPage() {
       </div>
       <div className="bg-white rounded-xl border p-0">
         <div>
-          <div className="text-xl font-semibold px-6 py-4 border-b">User Targets Overview</div>
+          <div className="text-xl font-semibold px-6 py-4 border-b">
+            User Targets Overview
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -123,11 +148,15 @@ export default function TargetsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center">Loading...</TableCell>
+                  <TableCell colSpan={3} className="text-center">
+                    Loading...
+                  </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center">No users found.</TableCell>
+                  <TableCell colSpan={3} className="text-center">
+                    No users found.
+                  </TableCell>
                 </TableRow>
               ) : (
                 users.map((user) => {
@@ -139,19 +168,42 @@ export default function TargetsPage() {
                           {/* Optionally add avatar here */}
                           <div>
                             <div className="font-medium">{user.email}</div>
-                            <div className="text-xs text-muted-foreground">Active</div>
+                            <div className="text-xs text-muted-foreground">
+                              Active
+                            </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${userTargets.length === 0 ? 'bg-gray-100 text-gray-500' : userTargets.length < 4 ? 'bg-yellow-100 text-yellow-700' : userTargets.length < 7 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                          <FontAwesomeIcon icon={faBullseye} /> {userTargets.length} targets
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                            userTargets.length === 0
+                              ? "bg-gray-100 text-gray-500"
+                              : userTargets.length < 4
+                              ? "bg-yellow-100 text-yellow-700"
+                              : userTargets.length < 7
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faBullseye} />{" "}
+                          {userTargets.length} targets
                         </span>
                       </TableCell>
                       <TableCell className="flex gap-2">
-                        <Dialog open={modalUser?.id === user.id} onOpenChange={(open) => { setModalUser(open ? user : null); form.reset(); }}>
+                        <Dialog
+                          open={modalUser?.id === user.id}
+                          onOpenChange={(open) => {
+                            setModalUser(open ? user : null);
+                            form.reset();
+                          }}
+                        >
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="text-blue-600 border-blue-200">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 border-blue-200"
+                            >
                               + Add Target
                             </Button>
                           </DialogTrigger>
@@ -161,30 +213,107 @@ export default function TargetsPage() {
                             </DialogHeader>
                             <div className="mb-4">
                               <div className="font-medium">{user.email}</div>
-                              <div className="text-xs text-muted-foreground mb-2">Role: {user.role || "N/A"}</div>
+                              <div className="text-xs text-muted-foreground mb-2">
+                                Role: {user.role || "N/A"}
+                              </div>
                             </div>
-                            <form onSubmit={form.handleSubmit(handleAddTarget)} className="space-y-4">
+                            <form
+                              onSubmit={form.handleSubmit(handleAddTarget)}
+                              className="space-y-4"
+                            >
                               <div>
                                 <Label htmlFor="target_name">Target Name</Label>
-                                <Input id="target_name" {...form.register("target_name")} />
+                                <Input
+                                  id="target_name"
+                                  {...form.register("target_name")}
+                                />
                                 {form.formState.errors.target_name && (
-                                  <ErrorText>{form.formState.errors.target_name.message}</ErrorText>
+                                  <ErrorText>
+                                    {form.formState.errors.target_name.message}
+                                  </ErrorText>
                                 )}
                               </div>
                               <div>
-                                <Label htmlFor="target_value">Target Value</Label>
-                                <Input id="target_value" type="number" {...form.register("target_value")} />
+                                <Label htmlFor="target_value">
+                                  Target Value
+                                </Label>
+                                <Input
+                                  id="target_value"
+                                  type="number"
+                                  {...form.register("target_value")}
+                                />
                                 {form.formState.errors.target_value && (
-                                  <ErrorText>{form.formState.errors.target_value.message}</ErrorText>
+                                  <ErrorText>
+                                    {form.formState.errors.target_value.message}
+                                  </ErrorText>
                                 )}
                               </div>
-                              <Button type="submit" className="w-full">Add Target</Button>
+                              <Button type="submit" className="w-full">
+                                Add Target
+                              </Button>
                             </form>
                           </DialogContent>
                         </Dialog>
-                        <Button size="sm" variant="outline" className="text-green-600 border-green-200">
-                          <FontAwesomeIcon icon={faEye} className="mr-1" /> View All
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-200"
+                          onClick={() => setViewUser(user)}
+                        >
+                          <FontAwesomeIcon icon={faEye} className="mr-1" /> View
+                          All
                         </Button>
+                        {/* View Targets Modal */}
+                        <Dialog
+                          open={viewUser?.id === user.id}
+                          onOpenChange={(open) =>
+                            setViewUser(open ? user : null)
+                          }
+                        >
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>
+                                Targets for {user.email}
+                              </DialogTitle>
+                            </DialogHeader>
+                            {viewUserTargets.length === 0 ? (
+                              <div className="text-muted-foreground text-center py-4">
+                                No targets found for this user.
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl border p-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Target Name</TableHead>
+                                      <TableHead>Value</TableHead>
+                                      <TableHead>Created At</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {viewUserTargets.map((target) => (
+                                      <TableRow key={target.id}>
+                                        <TableCell>
+                                          {target.target_name}
+                                        </TableCell>
+                                        <TableCell>
+                                          {target.target_value}
+                                        </TableCell>
+                                        <TableCell>
+                                          {target.created_at
+                                            ? new Date(
+                                                target.created_at
+                                              ).toLocaleString()
+                                            : "-"}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   );
