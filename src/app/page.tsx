@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/src/components/ui/button";
+import { createClient } from "@/src/lib/supabase/client";
 import {
   faBrain,
   faBuilding,
@@ -16,39 +17,63 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function LandingPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(!!data.user);
+    });
+  }, []);
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+    <main className="min-h-screen bg-white">
       <section className="max-w-5xl mx-auto px-4 py-20 flex flex-col md:flex-row items-center gap-12">
-        <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto justify-center items-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-2">
+        <div className="flex-1 flex flex-col gap-6 max-w-3xl mx-auto justify-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
             Boost Employee Productivity with Smart Daily Voice Updates
           </h1>
-          <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-4">
+          <p className="text-lg md:text-xl text-gray-700 mb-4">
             Streamline team performance tracking using voice inputs, AI
             analytics, and powerful departmental insights — all in one platform.
           </p>
           <div className="flex gap-4 mb-6">
-            <Button
-              asChild
-              size="lg"
-              className="text-lg px-8 py-4 flex items-center gap-2"
-            >
-              <Link href="/auth/sign-up">
-                <FontAwesomeIcon icon={faRocket} /> Get Started Free
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 py-4 flex items-center gap-2"
-            >
-              <Link href="/auth/login">
-                <FontAwesomeIcon icon={faVideo} /> Watch Demo
-              </Link>
-            </Button>
+            {isLoggedIn ? (
+              <Button
+                asChild
+                size="lg"
+                className="text-lg px-8 py-4 flex items-center gap-2"
+              >
+                <Link href="/dashboard">
+                  <FontAwesomeIcon icon={faRocket} /> Go to Dashboard
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  size="lg"
+                  className="text-lg px-8 py-4 flex items-center gap-2"
+                >
+                  <Link href="/auth/sign-up">
+                    <FontAwesomeIcon icon={faRocket} /> Get Started Free
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="text-lg px-8 py-4 flex items-center gap-2"
+                >
+                  <Link href="/auth/login">
+                    <FontAwesomeIcon icon={faVideo} /> Watch Demo
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>

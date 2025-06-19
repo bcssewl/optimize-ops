@@ -41,7 +41,7 @@ export function SignUpForm({
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -49,6 +49,18 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
+      // Insert into users table after successful signup
+      if (data?.user) {
+        await supabase.from("users").insert([
+          {
+            uuid: data.user.id,
+            email: data.user.email,
+            created_at: new Date().toISOString(),
+            // department_id: null, // Optionally set
+            // role: "employee", // Optionally set default role
+          },
+        ]);
+      }
       router.push("/dashboard");
       router.refresh();
     } catch (error: unknown) {

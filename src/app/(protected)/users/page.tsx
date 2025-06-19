@@ -35,9 +35,17 @@ interface User {
   id: number;
   created_at: string;
   uuid: string;
+  email: string;
   department_id: number | null;
   role: string;
 }
+
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "manager", label: "Manager" },
+  { value: "staff", label: "Staff" },
+];
 
 export default function UsersPage() {
   const supabase = createClient();
@@ -49,8 +57,9 @@ export default function UsersPage() {
   // Stat card values (mocked for now)
   const totalUsers = users.length;
   const admins = users.filter((u) => u.role === "admin").length;
-  const employees = users.filter((u) => u.role === "employee").length;
+  const supervisors = users.filter((u) => u.role === "supervisor").length;
   const managers = users.filter((u) => u.role === "manager").length;
+  const staff = users.filter((u) => u.role === "staff").length;
 
   // Fetch users and departments
   const fetchData = useCallback(async () => {
@@ -61,7 +70,7 @@ export default function UsersPage() {
     ] = await Promise.all([
       supabase
         .from("users")
-        .select("id, created_at, uuid, department_id, role"),
+        .select("id, created_at, uuid, email, department_id, role"),
       supabase.from("departments").select("id, name"),
     ]);
     if (usersError) toast.error("Failed to fetch users");
@@ -74,6 +83,20 @@ export default function UsersPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch departments on mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      setLoading(true);
+      const { data: departmentsData, error: departmentsError } = await supabase
+        .from("departments")
+        .select("id, name");
+      if (departmentsError) toast.error("Failed to fetch departments");
+      setDepartments(departmentsData || []);
+      setLoading(false);
+    };
+    fetchDepartments();
+  }, []);
 
   // Handle department change
   const handleDepartmentChange = async (
@@ -145,8 +168,8 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Employees</div>
-              <div className="text-xl font-bold">{employees}</div>
+              <div className="text-xs text-muted-foreground">Supervisors</div>
+              <div className="text-xl font-bold">{supervisors}</div>
             </div>
           </CardContent>
         </Card>
@@ -162,6 +185,21 @@ export default function UsersPage() {
             <div>
               <div className="text-xs text-muted-foreground">Managers</div>
               <div className="text-xl font-bold">{managers}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 py-6">
+            <div className="bg-pink-100 rounded-lg p-3">
+              <FontAwesomeIcon
+                icon={faUser}
+                className="text-pink-500"
+                size="2x"
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Staff</div>
+              <div className="text-xl font-bold">{staff}</div>
             </div>
           </CardContent>
         </Card>
@@ -194,31 +232,26 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead>UUID</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell>
-                      {new Date(user.created_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>{user.uuid}</TableCell>
+                    <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <Select
                         value={
-                          user.department_id ? String(user.department_id) : ""
+                          user.department_id
+                            ? String(user.department_id)
+                            : "none"
                         }
                         onValueChange={(val) =>
                           handleDepartmentChange(
                             user.id,
-                            val ? Number(val) : null
+                            val === "none" ? null : Number(val)
                           )
                         }
                         disabled={updating === user.id}
@@ -227,7 +260,7 @@ export default function UsersPage() {
                           <SelectValue placeholder="Assign department" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {departments.map((dept) => (
                             <SelectItem key={dept.id} value={String(dept.id)}>
                               {dept.name}
@@ -236,9 +269,40 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>{user.role}</TableCell>
                     <TableCell>
-                      {/* Actions (edit, delete, etc.) can go here */}
+                      <Select
+                        value={user.role || "staff"}
+                        onValueChange={async (val) => {
+                          setUpdating(user.id);
+                          const { error } = await supabase
+                            .from("users")
+                            .update({ role: val })
+                            .eq("id", user.id);
+                          if (error) {
+                            toast.error("Failed to update role");
+                          } else {
+                            toast.success("Role updated");
+                            setUsers((prev) =>
+                              prev.map((u) =>
+                                u.id === user.id ? { ...u, role: val } : u
+                              )
+                            );
+                          }
+                          setUpdating(null);
+                        }}
+                        disabled={updating === user.id || user.role === "admin"}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLE_OPTIONS.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                   </TableRow>
                 ))}
