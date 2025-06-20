@@ -15,7 +15,6 @@ import {
   faBullseye,
   faMicrophone,
   faTableColumns,
-  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
@@ -74,7 +73,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {showUsers && (
+              {/* {showUsers && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link href="/users">
@@ -89,7 +88,7 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )}
+              )} */}
               {showTargets && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
