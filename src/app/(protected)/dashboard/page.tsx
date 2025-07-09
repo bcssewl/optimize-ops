@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
   if (loading || statsLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh]">
+      <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
         <span className="text-gray-500">Loading dashboard...</span>
       </div>
     );
