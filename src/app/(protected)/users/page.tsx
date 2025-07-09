@@ -189,7 +189,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 w-full">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <FontAwesomeIcon
@@ -207,7 +207,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border">
+      <div className="bg-white rounded-lg shadow border w-full">
         <Table>
           <TableHeader>
             <TableRow>
@@ -260,6 +260,14 @@ export default function UsersPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(user)}
+                        disabled={
+                          user.role === "admin" || user.role === "manager"
+                        }
+                        className={`${
+                          user.role === "admin" || user.role === "manager"
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-blue-600 hover:text-blue-700"
+                        }`}
                       >
                         <FontAwesomeIcon icon={faEdit} width={16} height={16} />
                       </Button>
@@ -267,7 +275,12 @@ export default function UsersPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(user.id)}
-                        className="text-red-600 hover:text-red-700"
+                        disabled={user.role === "admin"}
+                        className={`${
+                          user.role === "admin"
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-red-600 hover:text-red-700"
+                        }`}
                       >
                         <FontAwesomeIcon
                           icon={faTrash}
@@ -324,7 +337,10 @@ export default function UsersPage() {
               <Select
                 value={form.watch("department_id")?.toString() || "none"}
                 onValueChange={(value) =>
-                  form.setValue("department_id", value === "none" ? null : parseInt(value))
+                  form.setValue(
+                    "department_id",
+                    value === "none" ? null : parseInt(value)
+                  )
                 }
               >
                 <SelectTrigger>
