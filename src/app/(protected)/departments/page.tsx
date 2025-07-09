@@ -30,7 +30,7 @@ import * as yup from "yup";
 import { Department } from "./columns";
 
 const schema = yup.object({
-  department_name: yup.string().required("Department name is required"),
+  title: yup.string().required("Department name is required"),
 });
 
 type FormValues = yup.InferType<typeof schema>;
@@ -42,7 +42,7 @@ export default function DepartmentsPage() {
   const [editing, setEditing] = useState<Department | null>(null);
   const form = useForm<FormValues>({
     resolver: yupResolver(schema),
-    defaultValues: { department_name: "" },
+    defaultValues: { title: "" },
   });
 
   // Fetch departments
@@ -72,7 +72,7 @@ export default function DepartmentsPage() {
       // Update
       const { error } = await supabase
         .from("departments")
-        .update({ department_name: values.department_name })
+        .update({ title: values.title })
         .eq("id", editing.id);
       if (error) {
         toast.error(error.message || "Failed to update department");
@@ -87,7 +87,7 @@ export default function DepartmentsPage() {
       // Create
       const { error } = await supabase
         .from("departments")
-        .insert([{ department_name: values.department_name }]);
+        .insert([{ title: values.title }]);
       if (error) {
         toast.error(error.message || "Failed to create department");
       } else {
@@ -102,7 +102,7 @@ export default function DepartmentsPage() {
   // Handle edit click
   const handleEdit = (dept: Department) => {
     setEditing(dept);
-    form.setValue("department_name", dept.department_name);
+    form.setValue("title", dept.title);
     setModalOpen(true);
   };
 
@@ -171,13 +171,11 @@ export default function DepartmentsPage() {
               >
                 <Input
                   placeholder="Department name"
-                  {...form.register("department_name")}
+                  {...form.register("title")}
                   disabled={loading}
                 />
-                {form.formState.errors.department_name && (
-                  <ErrorText>
-                    {form.formState.errors.department_name.message}
-                  </ErrorText>
+                {form.formState.errors.title && (
+                  <ErrorText>{form.formState.errors.title.message}</ErrorText>
                 )}
                 <div className="flex gap-2 mt-2">
                   <Button type="submit" disabled={loading}>
@@ -237,7 +235,7 @@ export default function DepartmentsPage() {
               <TableBody>
                 {departments.map((dept) => (
                   <TableRow key={dept.id}>
-                    <TableCell>{dept.department_name}</TableCell>
+                    <TableCell>{dept.title}</TableCell>
                     <TableCell>
                       {new Date(dept.created_at).toLocaleString()}
                     </TableCell>

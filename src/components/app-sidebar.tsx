@@ -15,6 +15,7 @@ import {
   faBullseye,
   faMicrophone,
   faTableColumns,
+  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
@@ -28,11 +29,11 @@ export function AppSidebar() {
 
   // Role-based menu logic
   const role = user?.role;
-  const showDashboard = true;
+  const showDashboard = true; // Everyone can see dashboard
   const showDepartments = role === "admin" || role === "manager";
   const showUsers = role === "admin" || role === "manager";
   const showTargets = role === "admin" || role === "manager";
-  const showUploadRecord = role === "supervisor";
+  const showUploadRecord = role === "supervisor" || role === "staff";
 
   return (
     <Sidebar collapsible="icon" className="relative">
@@ -73,7 +74,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {/* {showUsers && (
+              {showUsers && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link href="/users">
@@ -88,7 +89,7 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )} */}
+              )}
               {showTargets && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>

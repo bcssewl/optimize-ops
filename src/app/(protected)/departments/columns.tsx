@@ -3,14 +3,14 @@ import { ColumnDef } from "@tanstack/react-table";
 export type Department = {
   id: number;
   created_at: string;
-  department_name: string;
+  title: string;
 };
 
 export const columns: ColumnDef<Department>[] = [
   {
-    accessorKey: "department_name",
+    accessorKey: "title",
     header: "Department Name",
-    cell: ({ row }) => <span>{row.getValue("department_name")}</span>,
+    cell: ({ row }) => <span>{row.getValue("title")}</span>,
   },
   {
     accessorKey: "created_at",

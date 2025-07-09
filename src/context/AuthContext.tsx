@@ -11,7 +11,7 @@ import {
 interface AuthUser {
   id: string;
   email: string;
-  role?: string;
+  role?: "admin" | "supervisor" | "manager" | "staff";
 }
 
 interface AuthContextType {

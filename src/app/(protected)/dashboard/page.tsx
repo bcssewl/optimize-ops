@@ -37,12 +37,12 @@ export default function DashboardPage() {
           typeof departmentsRaw === "number" ? departmentsRaw : 0;
         const targets = typeof targetsRaw === "number" ? targetsRaw : 0;
         setStats({ users, departments, targets, myTargets: 0 });
-      } else if (user.role === "supervisor") {
-        // Count targets assigned to this supervisor
+      } else if (user.role === "supervisor" || user.role === "staff") {
+        // Count targets assigned to this supervisor/staff member
         const { count: myTargetsRaw } = await supabase
           .from("targets")
           .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
+          .eq("user_uuid", user.id);
         const myTargets = typeof myTargetsRaw === "number" ? myTargetsRaw : 0;
         setStats({ users: 0, departments: 0, targets: 0, myTargets });
       }
@@ -160,11 +160,72 @@ export default function DashboardPage() {
 
   if (user?.role === "staff") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
-        <h1 className="text-3xl font-bold mb-2">Welcome!</h1>
-        <p className="text-lg text-gray-600 text-center max-w-md">
-          Please ask your admin or manager to assign you a role.
-        </p>
+      <div className="w-full mx-auto py-12 px-4 md:px-4">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            My Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Track your personal targets and progress
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
+            <div className="flex-1">
+              <div className="text-gray-500 text-sm mb-1">My Targets</div>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl font-bold">{stats.myTargets}</span>
+                <span className="ml-2 bg-green-100 text-green-600 rounded-full p-2">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M12 1v6m0 6v6M1 12h6m6 0h6"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </span>
+              </div>
+              <div className="text-blue-500 text-xs mt-1">
+                Goals assigned to you
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
+            <div className="flex-1">
+              <div className="text-gray-500 text-sm mb-1">Quick Actions</div>
+              <div className="flex flex-col gap-2 mt-4">
+                <a
+                  href="/upload-record"
+                  className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a5 5 0 1110 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                  Record Update
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
