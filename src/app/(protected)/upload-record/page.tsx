@@ -10,8 +10,10 @@ import {
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { Switch } from "@/src/components/ui/switch";
 import { Textarea } from "@/src/components/ui/textarea";
 import { useAuth } from "@/src/context/AuthContext";
+import { convertToMp3, getFileExtension } from "@/src/lib/audio-utils";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   faMicrophone,
@@ -56,6 +58,7 @@ export default function UploadRecordPage() {
   const [description, setDescription] = useState("");
   const [fileName, setFileName] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [convertToMp3Format, setConvertToMp3Format] = useState(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -256,11 +259,31 @@ export default function UploadRecordPage() {
     try {
       const supabase = createClient();
 
+      // Convert to MP3 if requested
+      let finalBlob = recordingState.audioBlob;
+      let finalMimeType = recordingState.audioBlob.type;
+      let fileExtension = getFileExtension(recordingState.audioBlob.type);
+
+      if (
+        convertToMp3Format &&
+        !recordingState.audioBlob.type.includes("mp3")
+      ) {
+        toast.info("Converting to MP3...");
+        try {
+          finalBlob = await convertToMp3(recordingState.audioBlob);
+          finalMimeType = "audio/mp3";
+          fileExtension = "mp3";
+        } catch (conversionError) {
+          console.warn(
+            "MP3 conversion failed, using original format:",
+            conversionError
+          );
+          toast.warning("MP3 conversion failed, uploading as WebM");
+        }
+      }
+
       // Generate unique file name
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const fileExtension = recordingState.audioBlob.type.includes("webm")
-        ? "webm"
-        : "mp4";
       const uniqueFileName = `${user.id}/${timestamp}-${fileName
         .trim()
         .replace(/[^a-zA-Z0-9-_]/g, "_")}.${fileExtension}`;
@@ -268,13 +291,14 @@ export default function UploadRecordPage() {
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("audio-recordings")
-        .upload(uniqueFileName, recordingState.audioBlob, {
-          contentType: recordingState.audioBlob.type,
+        .upload(uniqueFileName, finalBlob, {
+          contentType: finalMimeType,
           upsert: false,
         });
 
       if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
+        console.log("Upload error:", uploadError);
+        throw new Error(`*** Upload failed: ${uploadError.message}`);
       }
 
       // Save metadata to database
@@ -282,7 +306,7 @@ export default function UploadRecordPage() {
         user_uuid: user.id,
         file_name: `${fileName.trim()}.${fileExtension}`,
         file_path: uniqueFileName,
-        file_type: recordingState.audioBlob.type,
+        file_type: finalMimeType,
         duration: recordingState.duration,
         description: description.trim() || null,
         status: "success",
@@ -461,6 +485,25 @@ export default function UploadRecordPage() {
                   rows={3}
                   disabled={isUploading}
                 />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="convertToMp3"
+                  checked={convertToMp3Format}
+                  onCheckedChange={setConvertToMp3Format}
+                  disabled={isUploading}
+                />
+                <Label htmlFor="convertToMp3" className="text-sm">
+                  Convert to MP3 format
+                  <span className="text-muted-foreground ml-1">
+                    (Currently:{" "}
+                    {recordingState.audioBlob?.type.includes("webm")
+                      ? "WebM"
+                      : "MP4"}
+                    )
+                  </span>
+                </Label>
               </div>
 
               <div className="pt-4">
