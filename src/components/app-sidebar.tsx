@@ -13,6 +13,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import {
   faBuilding,
   faBullseye,
+  faHistory,
   faMicrophone,
   faTableColumns,
   faUsers,
@@ -34,6 +35,7 @@ export function AppSidebar() {
   const showUsers = role === "admin" || role === "manager";
   const showTargets = role === "admin" || role === "manager";
   const showUploadRecord = role === "supervisor" || role === "staff";
+  const showRecordings = true; // Everyone can see recordings (filtered by role)
 
   return (
     <Sidebar collapsible="icon" className="relative">
@@ -106,7 +108,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {role === "supervisor" && (
+              {showUploadRecord && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link href="/upload-record">
@@ -116,7 +118,23 @@ export function AppSidebar() {
                         className="mr-2 text-primary"
                       />
                       <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                        Upload Record
+                        Record Audio
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {showRecordings && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/recordings">
+                      <FontAwesomeIcon
+                        icon={faHistory}
+                        size="lg"
+                        className="mr-2 text-primary"
+                      />
+                      <span className="group-data-[collapsible=icon]/sidebar:hidden">
+                        Recordings
                       </span>
                     </Link>
                   </SidebarMenuButton>

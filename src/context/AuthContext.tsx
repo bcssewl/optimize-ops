@@ -53,12 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getUser();
 
     // Listen for auth state changes and update user state
-    // const { data: listener } = supabase.auth.onAuthStateChange(() => {
-    //   getUser();
-    // });
-    // return () => {
-    //   listener?.subscription.unsubscribe();
-    // };
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (
+          event === "SIGNED_IN" ||
+          event === "SIGNED_OUT" ||
+          event === "TOKEN_REFRESHED"
+        ) {
+          getUser();
+        }
+      }
+    );
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   return (
