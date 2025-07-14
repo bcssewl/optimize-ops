@@ -10,7 +10,6 @@ import {
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
-import { Switch } from "@/src/components/ui/switch";
 import { Textarea } from "@/src/components/ui/textarea";
 import { useAuth } from "@/src/context/AuthContext";
 import { convertToMp3, getFileExtension } from "@/src/lib/audio-utils";
@@ -486,7 +485,7 @@ export default function UploadRecordPage() {
                   disabled={isUploading}
                 />
               </div>
-
+              {/* 
               <div className="flex items-center space-x-2">
                 <Switch
                   id="convertToMp3"
@@ -504,7 +503,7 @@ export default function UploadRecordPage() {
                     )
                   </span>
                 </Label>
-              </div>
+              </div> */}
 
               <div className="pt-4">
                 <Button
