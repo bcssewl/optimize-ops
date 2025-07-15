@@ -81,9 +81,11 @@ export default function UploadRecordPage() {
       });
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm")
+        mimeType: MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : MediaRecorder.isTypeSupported("audio/webm")
           ? "audio/webm"
-          : "audio/mp4",
+          : "audio/wav",
       });
 
       mediaRecorderRef.current = mediaRecorder;
