@@ -8,9 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
-import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
-import { Textarea } from "@/src/components/ui/textarea";
 import { useAuth } from "@/src/context/AuthContext";
 import { convertToMp3, getFileExtension } from "@/src/lib/audio-utils";
 import { createClient } from "@/src/lib/supabase/client";
@@ -54,8 +51,6 @@ export default function UploadRecordPage() {
     isPlaying: false,
   });
 
-  const [description, setDescription] = useState("");
-  const [fileName, setFileName] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [convertToMp3Format, setConvertToMp3Format] = useState(false);
 
@@ -235,9 +230,6 @@ export default function UploadRecordPage() {
       isPlaying: false,
     });
 
-    setDescription("");
-    setFileName("");
-
     toast.success("Recording cleared");
   };
 
@@ -245,11 +237,6 @@ export default function UploadRecordPage() {
   const uploadRecording = async () => {
     if (!recordingState.audioBlob || !user) {
       toast.error("No recording to upload");
-      return;
-    }
-
-    if (!fileName.trim()) {
-      toast.error("Please enter a file name");
       return;
     }
 
@@ -281,11 +268,9 @@ export default function UploadRecordPage() {
         }
       }
 
-      // Generate unique file name
+      // Generate unique file name using user_uuid-timestamp format
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const uniqueFileName = `${user.id}/${timestamp}-${fileName
-        .trim()
-        .replace(/[^a-zA-Z0-9-_]/g, "_")}.${fileExtension}`;
+      const uniqueFileName = `${user.id}/${user.id}-x-${timestamp}.${fileExtension}`;
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -303,11 +288,11 @@ export default function UploadRecordPage() {
       // Save metadata to database
       const { error: dbError } = await supabase.from("recordings").insert({
         user_uuid: user.id,
-        file_name: `${fileName.trim()}.${fileExtension}`,
+        file_name: `${user.id}-x-${timestamp}.${fileExtension}`,
         file_path: uniqueFileName,
         file_type: finalMimeType,
         duration: recordingState.duration,
-        description: description.trim() || null,
+        description: null,
         status: "success",
       });
 
@@ -459,56 +444,14 @@ export default function UploadRecordPage() {
             <CardHeader>
               <CardTitle>Upload Recording</CardTitle>
               <CardDescription>
-                Add details and upload your recording
+                Upload your recording (automatically named with timestamp)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="fileName">File Name *</Label>
-                <Input
-                  id="fileName"
-                  placeholder="Enter a name for your recording"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  disabled={isUploading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Add a description for your recording..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  disabled={isUploading}
-                />
-              </div>
-              {/* 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="convertToMp3"
-                  checked={convertToMp3Format}
-                  onCheckedChange={setConvertToMp3Format}
-                  disabled={isUploading}
-                />
-                <Label htmlFor="convertToMp3" className="text-sm">
-                  Convert to MP3 format
-                  <span className="text-muted-foreground ml-1">
-                    (Currently:{" "}
-                    {recordingState.audioBlob?.type.includes("webm")
-                      ? "WebM"
-                      : "MP4"}
-                    )
-                  </span>
-                </Label>
-              </div> */}
-
               <div className="pt-4">
                 <Button
                   onClick={uploadRecording}
-                  disabled={isUploading || !fileName.trim()}
+                  disabled={isUploading}
                   size="lg"
                   className="w-full"
                 >
@@ -553,7 +496,9 @@ export default function UploadRecordPage() {
               <li>• Speak clearly and at a normal volume for best quality</li>
               <li>• You can pause and resume recording as needed</li>
               <li>• Preview your recording before uploading</li>
-              <li>• Add a descriptive file name and optional description</li>
+              <li>
+                • Files are automatically named with your user ID and timestamp
+              </li>
               <li>
                 • Recordings are automatically saved with your user account
               </li>
