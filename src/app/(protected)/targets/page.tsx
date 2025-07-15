@@ -40,21 +40,22 @@ interface Target {
   id: number;
   user_uuid: string;
   target_name: string;
-  target_value: number;
+  target_value: string;
   created_at?: string;
 }
 
 interface AddTargetFormValues {
   target_name: string;
-  target_value: number;
+  target_value: string;
 }
 
 const schema = yup.object({
   target_name: yup.string().required("Target name is required"),
   target_value: yup
-    .number()
-    .typeError("Target value must be a number")
-    .required("Target value is required"),
+    .string()
+    .required("Target value is required")
+    .trim()
+    .min(1, "Target value cannot be empty"),
 });
 
 export default function TargetsPage() {
@@ -69,7 +70,7 @@ export default function TargetsPage() {
   const [viewUser, setViewUser] = useState<User | null>(null);
   const form = useForm<AddTargetFormValues>({
     resolver: yupResolver(schema),
-    defaultValues: { target_name: "", target_value: undefined },
+    defaultValues: { target_name: "", target_value: "" },
   });
 
   // Memoized user targets for view modal
@@ -276,7 +277,8 @@ export default function TargetsPage() {
                                 </Label>
                                 <Input
                                   id="target_value"
-                                  type="number"
+                                  type="text"
+                                  placeholder="Enter target value"
                                   {...form.register("target_value")}
                                 />
                                 {form.formState.errors.target_value && (

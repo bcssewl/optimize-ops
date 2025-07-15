@@ -5,6 +5,7 @@ import {
   ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -27,12 +28,25 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef<AuthUser | null>(null);
+
+  // Update ref whenever user state changes
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     const supabase = createClient();
+    let mounted = true;
+
     const getUser = async () => {
+      if (!mounted) return;
+
       setLoading(true);
       const { data: userData } = await supabase.auth.getUser();
+
+      if (!mounted) return;
+
       if (userData?.user) {
         // Fetch user role from users table
         const { data: userRow } = await supabase
@@ -40,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select("id, email, role")
           .eq("uuid", userData.user.id)
           .single();
+
+        if (!mounted) return;
+
         setUser({
           id: userData.user.id,
           email: userData.user.email || "",
@@ -50,25 +67,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     };
+
     getUser();
 
     // Listen for auth state changes and update user state
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (
-          event === "SIGNED_IN" ||
-          event === "SIGNED_OUT" ||
-          event === "TOKEN_REFRESHED"
-        ) {
+        console.log(
+          "*** Auth state changed:",
+          event,
+          "Session exists:",
+          !!session
+        );
+
+        // Only refetch on actual sign-in/sign-out, not session restoration
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          setLoading(false);
+        } else if (event === "SIGNED_IN" && session?.user && !userRef.current) {
+          // Only fetch user data if we don't already have user data
           getUser();
         }
       }
     );
 
     return () => {
+      mounted = false;
       listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Remove user dependency to prevent infinite loop
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
