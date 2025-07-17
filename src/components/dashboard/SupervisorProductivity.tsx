@@ -122,7 +122,9 @@ export function SupervisorProductivity() {
                 userData.targetsCount++;
 
                 // Count exceeded targets
-                if (analysis.status.toLowerCase().includes("exceeded")) {
+                if (
+                  (analysis.status || "").toLowerCase().includes("exceeded")
+                ) {
                   userData.exceededCount++;
                 }
 

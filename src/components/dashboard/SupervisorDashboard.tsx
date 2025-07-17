@@ -205,19 +205,19 @@ export function SupervisorDashboard() {
     }
 
     const exceededTargets = analysisData.filter((item) =>
-      item.status.toLowerCase().includes("exceeded")
+      (item.status || "").toLowerCase().includes("exceeded")
     ).length;
 
     const completedTargets = analysisData.filter(
       (item) =>
-        item.status.toLowerCase().includes("exceeded") ||
-        item.status.toLowerCase().includes("completed")
+        (item.status || "").toLowerCase().includes("exceeded") ||
+        (item.status || "").toLowerCase().includes("completed")
     ).length;
 
     const inProgressTargets = analysisData.filter(
       (item) =>
-        item.status.toLowerCase().includes("progress") ||
-        item.status.toLowerCase().includes("started")
+        (item.status || "").toLowerCase().includes("progress") ||
+        (item.status || "").toLowerCase().includes("started")
     ).length;
 
     // Calculate average achievement percentage
@@ -299,7 +299,7 @@ export function SupervisorDashboard() {
       }
     };
 
-    const statusInfo = getStatusColor(item.status);
+    const statusInfo = getStatusColor(item.status || "");
     const progressPercentage =
       typeof item.percentage_achieve === "number"
         ? Math.min(item.percentage_achieve, 100)
@@ -307,9 +307,9 @@ export function SupervisorDashboard() {
 
     return {
       name:
-        item.target_name.length > 40
-          ? `${item.target_name.substring(0, 40)}...`
-          : item.target_name,
+        (item.target_name || "").length > 40
+          ? `${(item.target_name || "").substring(0, 40)}...`
+          : item.target_name || "N/A",
       icon: (
         <FontAwesomeIcon
           icon={
@@ -331,13 +331,13 @@ export function SupervisorDashboard() {
         />
       ),
       current:
-        item.ahcieved_result.length > 30
-          ? `${item.ahcieved_result.substring(0, 30)}...`
-          : item.ahcieved_result,
+        (item.ahcieved_result || "").length > 30
+          ? `${(item.ahcieved_result || "").substring(0, 30)}...`
+          : item.ahcieved_result || "N/A",
       target:
-        item.target_value.length > 30
-          ? `${item.target_value.substring(0, 30)}...`
-          : item.target_value,
+        (item.target_value || "").length > 30
+          ? `${(item.target_value || "").substring(0, 30)}...`
+          : item.target_value || "N/A",
       progress: progressPercentage,
       color: statusInfo.color,
       status: statusInfo.status,

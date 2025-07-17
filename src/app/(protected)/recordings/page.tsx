@@ -280,7 +280,7 @@ export default function RecordingsPage() {
                   height={20}
                   className="mr-2"
                 />
-                Record or Upload Audio
+                Record Audio
               </Button>
             </Link>
           )}

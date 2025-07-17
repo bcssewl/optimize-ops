@@ -122,13 +122,13 @@ export default function DashboardPage() {
     }
 
     const exceededTargets = analysisData.filter((item) =>
-      item.status.toLowerCase().includes("exceeded")
+      (item.status || "").toLowerCase().includes("exceeded")
     ).length;
 
     const inProgressTargets = analysisData.filter(
       (item) =>
-        item.status.toLowerCase().includes("progress") ||
-        item.status.toLowerCase().includes("started")
+        (item.status || "").toLowerCase().includes("progress") ||
+        (item.status || "").toLowerCase().includes("started")
     ).length;
 
     // Calculate average achievement percentage
@@ -314,23 +314,32 @@ export default function DashboardPage() {
                       >
                         <td className="py-3 px-4">
                           <div className="font-medium">
-                            {item.target_name.length > 50
-                              ? `${item.target_name.substring(0, 50)}...`
-                              : item.target_name}
+                            {(item.target_name || "").length > 50
+                              ? `${(item.target_name || "").substring(
+                                  0,
+                                  50
+                                )}...`
+                              : item.target_name || "N/A"}
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-gray-600">
-                            {item.ahcieved_result.length > 40
-                              ? `${item.ahcieved_result.substring(0, 40)}...`
-                              : item.ahcieved_result}
+                            {(item.ahcieved_result || "").length > 40
+                              ? `${(item.ahcieved_result || "").substring(
+                                  0,
+                                  40
+                                )}...`
+                              : item.ahcieved_result || "N/A"}
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-gray-600">
-                            {item.target_value.length > 30
-                              ? `${item.target_value.substring(0, 30)}...`
-                              : item.target_value}
+                            {(item.target_value || "").length > 30
+                              ? `${(item.target_value || "").substring(
+                                  0,
+                                  30
+                                )}...`
+                              : item.target_value || "N/A"}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -357,12 +366,12 @@ export default function DashboardPage() {
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
-                              item.status
+                              item.status || ""
                             )}`}
                           >
-                            {item.status.length > 20
-                              ? `${item.status.substring(0, 20)}...`
-                              : item.status}
+                            {(item.status || "").length > 20
+                              ? `${(item.status || "").substring(0, 20)}...`
+                              : item.status || "Unknown"}
                           </span>
                         </td>
                       </tr>
@@ -448,7 +457,7 @@ export default function DashboardPage() {
                       d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a5 5 0 1110 0v6a3 3 0 01-3 3z"
                     />
                   </svg>
-                  Record or Upload Audio
+                  Record Audio
                 </a>
               </div>
             </div>

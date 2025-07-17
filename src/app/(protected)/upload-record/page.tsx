@@ -461,22 +461,21 @@ export default function UploadRecordPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Record or Upload Audio</h1>
+          <h1 className="text-3xl font-bold">Record Audio</h1>
           <p className="text-muted-foreground">
-            Record live audio or upload MP3/MP4 files for productivity tracking
+            Record live audio for productivity tracking
           </p>
         </div>
 
         {/* File Upload Section */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>Upload Audio File</CardTitle>
             <CardDescription>
               Upload MP3 or MP4 files directly from your device
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Drag and Drop Area */}
+          <CardContent className="space-y-6"> 
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragOver
@@ -521,8 +520,7 @@ export default function UploadRecordPage() {
                 />
               </div>
             </div>
-
-            {/* File Information */}
+ 
             {uploadedFile && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
@@ -549,8 +547,7 @@ export default function UploadRecordPage() {
                 </div>
               </div>
             )}
-
-            {/* Upload Button */}
+ 
             {uploadedFile && (
               <Button
                 onClick={uploadFile}
@@ -586,10 +583,10 @@ export default function UploadRecordPage() {
               Supported formats: MP3, MP4 • Maximum size: 50MB
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Divider */}
-        <div className="relative">
+        {/* <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>
@@ -598,7 +595,7 @@ export default function UploadRecordPage() {
               Or record live audio
             </span>
           </div>
-        </div>
+        </div> */}
 
         {/* Recording Controls */}
         <Card>
@@ -751,7 +748,7 @@ export default function UploadRecordPage() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-6">
-              <div>
+              {/* <div>
                 <h4 className="font-medium mb-2">File Upload</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• Upload MP3 or MP4 files directly</li>
@@ -759,7 +756,7 @@ export default function UploadRecordPage() {
                   <li>• Maximum file size: 50MB</li>
                   <li>• Files are automatically processed after upload</li>
                 </ul>
-              </div>
+              </div> */}
               <div>
                 <h4 className="font-medium mb-2">Live Recording</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
