@@ -430,7 +430,6 @@ export function SupervisorDashboard() {
               <thead>
                 <tr className="text-gray-500 text-left">
                   <th className="py-2 px-2 font-medium">Target Name</th>
-                  <th className="py-2 px-2 font-medium">Current Result</th>
                   <th className="py-2 px-2 font-medium">Target Value</th>
                   <th className="py-2 px-2 font-medium">Achievement</th>
                   <th className="py-2 px-2 font-medium">Status</th>
@@ -443,11 +442,6 @@ export function SupervisorDashboard() {
                       {t.icon}
                       <span title={analysisData[index]?.target_name}>
                         {t.name}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2">
-                      <span title={analysisData[index]?.ahcieved_result}>
-                        {t.current}
                       </span>
                     </td>
                     <td className="py-2 px-2">

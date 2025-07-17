@@ -282,7 +282,6 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="text-left text-gray-500 border-b">
                     <th className="py-3 px-4 font-medium">Target Name</th>
-                    <th className="py-3 px-4 font-medium">Current Result</th>
                     <th className="py-3 px-4 font-medium">Target Value</th>
                     <th className="py-3 px-4 font-medium">Achievement</th>
                     <th className="py-3 px-4 font-medium">Status</th>
@@ -321,16 +320,6 @@ export default function DashboardPage() {
                                   50
                                 )}...`
                               : item.target_name || "N/A"}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-gray-600">
-                            {(item.ahcieved_result || "").length > 40
-                              ? `${(item.ahcieved_result || "").substring(
-                                  0,
-                                  40
-                                )}...`
-                              : item.ahcieved_result || "N/A"}
                           </div>
                         </td>
                         <td className="py-3 px-4">
