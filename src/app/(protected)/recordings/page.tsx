@@ -280,7 +280,7 @@ export default function RecordingsPage() {
                   height={20}
                   className="mr-2"
                 />
-                New Recording
+                Record or Upload Audio
               </Button>
             </Link>
           )}
@@ -363,7 +363,7 @@ export default function RecordingsPage() {
                             height={16}
                             className="mr-2"
                           />
-                          Start Recording
+                          Start Recording or Upload File
                         </Button>
                       </Link>
                     </div>
@@ -409,7 +409,7 @@ export default function RecordingsPage() {
                             ? formatDuration(recording.duration)
                             : "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell style={{ whiteSpace: "nowrap" }}>
                           {getStatusBadge(recording.status)}
                         </TableCell>
                         <TableCell>

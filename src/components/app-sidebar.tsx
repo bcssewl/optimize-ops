@@ -118,7 +118,7 @@ export function AppSidebar() {
                         className="mr-2 text-primary"
                       />
                       <span className="group-data-[collapsible=icon]/sidebar:hidden">
-                        Record Audio
+                        Record or Upload Audio
                       </span>
                     </Link>
                   </SidebarMenuButton>
