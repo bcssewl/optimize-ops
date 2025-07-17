@@ -38,7 +38,10 @@ export function AppSidebar() {
   const showRecordings = true; // Everyone can see recordings (filtered by role)
 
   return (
-    <Sidebar collapsible="icon" className="relative">
+    <Sidebar
+      collapsible="icon"
+      className="relative border-r h-full border-gray-200"
+    >
       <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
