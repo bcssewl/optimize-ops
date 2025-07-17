@@ -270,7 +270,7 @@ export default function DashboardPage() {
 
         {/* Recent Analysis Results */}
         {analysisData.length > 0 && (
-          <div className="bg-white rounded-xl shadow p-6 mb-8">
+          <div className="bg-white rounded-xl shadow p-6 my-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Recent Target Analysis</h2>
               <span className="text-sm text-gray-500">
