@@ -1,16 +1,13 @@
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import {
-  faChartBar,
   faCheckCircle,
-  faCog,
   faDollarSign,
   faEnvelope,
   faFilter,
   faHeart,
   faSpinner,
   faStar,
-  faUpload,
   faUsers,
   faUserShield,
 } from "@fortawesome/free-solid-svg-icons";
@@ -554,20 +551,6 @@ export function SupervisorDashboard() {
         </div>
       )}
       {/* Action Buttons */}
-      <div className="flex flex-col md:flex-row gap-4 mt-4">
-        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <FontAwesomeIcon icon={faUpload} width={20} height={20} />
-          Upload Record
-        </button>
-        <button className="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <FontAwesomeIcon icon={faChartBar} width={20} height={20} />
-          View Reports
-        </button>
-        <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg text-lg flex items-center justify-center gap-2">
-          <FontAwesomeIcon icon={faCog} width={20} height={20} />
-          Settings
-        </button>
-      </div>
     </div>
   );
 }

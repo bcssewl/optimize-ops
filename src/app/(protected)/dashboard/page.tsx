@@ -176,9 +176,6 @@ export default function DashboardPage() {
                   <FontAwesomeIcon icon={faUsers} width={24} height={24} />
                 </span>
               </div>
-              <div className="text-green-500 text-xs mt-1">
-                ↑ 12% from last month
-              </div>
             </div>
           </div>
           <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
@@ -189,9 +186,6 @@ export default function DashboardPage() {
                 <span className="ml-2 bg-purple-100 text-purple-600 rounded-full p-2">
                   <FontAwesomeIcon icon={faBuilding} width={24} height={24} />
                 </span>
-              </div>
-              <div className="text-green-500 text-xs mt-1">
-                ↑ 3% from last month
               </div>
             </div>
           </div>
@@ -204,9 +198,6 @@ export default function DashboardPage() {
                   <FontAwesomeIcon icon={faBullseye} width={24} height={24} />
                 </span>
               </div>
-              <div className="text-red-500 text-xs mt-1">
-                ↓ 5% from last month
-              </div>
             </div>
           </div>
           <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
@@ -217,9 +208,6 @@ export default function DashboardPage() {
                 <span className="ml-2 bg-green-100 text-green-600 rounded-full p-2">
                   <FontAwesomeIcon icon={faChartLine} width={24} height={24} />
                 </span>
-              </div>
-              <div className="text-green-500 text-xs mt-1">
-                ↑ 18% from last month
               </div>
             </div>
           </div>
@@ -366,7 +354,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
                               item.status
@@ -391,6 +379,13 @@ export default function DashboardPage() {
     );
   }
 
+  if (user?.role === "supervisor" || user?.role === "staff") {
+    return (
+      <div className="flex flex-col items-start justify-start py-8 px-8 min-h-[40vh] w-full">
+        <SupervisorDashboard />
+      </div>
+    );
+  }
   if (user?.role === "staff") {
     return (
       <div className="w-full mx-auto py-12 px-4 md:px-4">
@@ -462,15 +457,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  if (user?.role === "supervisor") {
-    return (
-      <div className="flex flex-col items-start justify-start py-8 px-8 min-h-[40vh] w-full">
-        <SupervisorDashboard />
-      </div>
-    );
-  }
-
   // Default fallback
   return (
     <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
