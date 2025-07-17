@@ -45,6 +45,7 @@ const GooglePrebuiltButton = ({
                 uuid: data.user.id,
                 email: data.user.email,
                 created_at: new Date().toISOString(),
+                role: "supervisor", // Default role, adjust as needed
                 // organization_id: null, // Set if you have org logic
               },
             ],

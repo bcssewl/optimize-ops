@@ -56,6 +56,7 @@ export function SignUpForm({
             uuid: data.user.id,
             email: data.user.email,
             created_at: new Date().toISOString(),
+            role: "supervisor", // Default role, adjust as needed
             // department_id: null, // Optionally set
             // role: "employee", // Optionally set default role
           },

@@ -53,6 +53,9 @@ export default function UploadRecordPage() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [convertToMp3Format, setConvertToMp3Format] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -329,15 +332,272 @@ export default function UploadRecordPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  // File upload handlers
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const validTypes = ["audio/mp3", "audio/mpeg", "audio/mp4", "video/mp4"];
+    const validExtensions = [".mp3", ".mp4", ".m4a", ".mpeg"];
+
+    const isValidType =
+      validTypes.includes(file.type) ||
+      validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
+
+    if (!isValidType) {
+      toast.error("Please select an MP3 or MP4 file");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      // 50MB limit
+      toast.error("File size must be less than 50MB");
+      return;
+    }
+
+    setUploadedFile(file);
+
+    // Clear any existing recording
+    if (recordingState.audioBlob) {
+      clearRecording();
+    }
+
+    toast.success(`File "${file.name}" selected successfully`);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelect(e.target.files);
+  };
+
+  const clearUploadedFile = () => {
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.success("File cleared");
+  };
+
+  const uploadFile = async () => {
+    if (!uploadedFile || !user) {
+      toast.error("No file to upload");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const supabase = createClient();
+
+      // Get file extension
+      const fileExtension = getFileExtension(uploadedFile.name) || "mp3";
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const uniqueFileName = `${user.id}/${user.id}-x-${timestamp}.${fileExtension}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from("audio-recordings")
+        .upload(uniqueFileName, uploadedFile, {
+          contentType: uploadedFile.type || `audio/${fileExtension}`,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      // Insert into database using the same schema as recording function
+      const { error: dbError } = await supabase.from("recordings").insert({
+        user_uuid: user.id,
+        file_name: `${user.id}-x-${timestamp}.${fileExtension}`,
+        file_path: uniqueFileName,
+        file_type: uploadedFile.type || `audio/${fileExtension}`,
+        duration: null, // Will be determined during processing
+        description: null,
+        status: "in_progress", // Set as in_progress for processing
+      });
+
+      if (dbError) {
+        // If database insert fails, try to clean up the uploaded file
+        await supabase.storage
+          .from("audio-recordings")
+          .remove([uniqueFileName]);
+
+        throw new Error(`Database error: ${dbError.message}`);
+      }
+
+      toast.success("File uploaded successfully!");
+
+      // Clear the uploaded file
+      clearUploadedFile();
+
+      // Redirect to recordings page
+      router.push("/recordings");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error(`Failed to upload file: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Record Audio</h1>
+          <h1 className="text-3xl font-bold">Record or Upload Audio</h1>
           <p className="text-muted-foreground">
-            Record and upload voice recordings for productivity tracking
+            Record live audio or upload MP3/MP4 files for productivity tracking
           </p>
+        </div>
+
+        {/* File Upload Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Audio File</CardTitle>
+            <CardDescription>
+              Upload MP3 or MP4 files directly from your device
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Drag and Drop Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragOver
+                  ? "border-primary bg-primary/5"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="space-y-4">
+                <div className="text-4xl">📁</div>
+                <div>
+                  <p className="text-lg font-medium">
+                    {isDragOver
+                      ? "Drop your file here"
+                      : "Drag and drop your audio file"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    or click below to browse files
+                  </p>
+                </div>
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  <FontAwesomeIcon
+                    icon={faUpload}
+                    width={16}
+                    height={16}
+                    className="mr-2"
+                  />
+                  Choose File
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp3,.mp4,.m4a,.mpeg,audio/mp3,audio/mpeg,audio/mp4,video/mp4"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* File Information */}
+            {uploadedFile && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{uploadedFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB •{" "}
+                      {uploadedFile.type || "audio/mp3"}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={clearUploadedFile}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <FontAwesomeIcon
+                      icon={faTrash}
+                      width={14}
+                      height={14}
+                      className="mr-1"
+                    />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Upload Button */}
+            {uploadedFile && (
+              <Button
+                onClick={uploadFile}
+                disabled={isUploading}
+                size="lg"
+                className="w-full"
+              >
+                {isUploading ? (
+                  <>
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      width={20}
+                      height={20}
+                      className="mr-2 animate-spin"
+                    />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon
+                      icon={faUpload}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    Upload File
+                  </>
+                )}
+              </Button>
+            )}
+
+            <div className="text-xs text-muted-foreground text-center">
+              Supported formats: MP3, MP4 • Maximum size: 50MB
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or record live audio
+            </span>
+          </div>
         </div>
 
         {/* Recording Controls */}
@@ -446,7 +706,7 @@ export default function UploadRecordPage() {
             <CardHeader>
               <CardTitle>Upload Recording</CardTitle>
               <CardDescription>
-                Upload your recording (automatically named with timestamp)
+                Upload your recorded audio (automatically named with timestamp)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -490,21 +750,32 @@ export default function UploadRecordPage() {
             <CardTitle>Instructions</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                • Make sure your microphone is connected and permissions are
-                granted
-              </li>
-              <li>• Speak clearly and at a normal volume for best quality</li>
-              <li>• You can pause and resume recording as needed</li>
-              <li>• Preview your recording before uploading</li>
-              <li>
-                • Files are automatically named with your user ID and timestamp
-              </li>
-              <li>
-                • Recordings are automatically saved with your user account
-              </li>
-            </ul>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">File Upload</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Upload MP3 or MP4 files directly</li>
+                  <li>• Drag and drop files or use the file picker</li>
+                  <li>• Maximum file size: 50MB</li>
+                  <li>• Files are automatically processed after upload</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Live Recording</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Make sure your microphone is connected</li>
+                  <li>• Speak clearly and at a normal volume</li>
+                  <li>• You can pause and resume recording</li>
+                  <li>• Preview your recording before uploading</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> All recordings are automatically saved
+                with your user account and processed for productivity insights.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
