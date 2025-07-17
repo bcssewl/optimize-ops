@@ -266,6 +266,7 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+        <SupervisorProductivity />
 
         {/* Recent Analysis Results */}
         {analysisData.length > 0 && (
@@ -382,8 +383,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-
-        <SupervisorProductivity />
       </div>
     );
   }
