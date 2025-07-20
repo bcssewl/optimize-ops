@@ -37,20 +37,27 @@ const GooglePrebuiltButton = ({
           token: response.credential,
         });
         if (error) throw error;
-        // Insert into users table if not exists
+        // Insert into users table only if user doesn't exist
         if (data?.user) {
-          await supabase.from("users").upsert(
-            [
+          // Check if user already exists
+          const { data: existingUser } = await supabase
+            .from("users")
+            .select("uuid")
+            .eq("uuid", data.user.id)
+            .single();
+
+          // Only insert if user doesn't exist (preserve existing user's role)
+          if (!existingUser) {
+            await supabase.from("users").insert([
               {
                 uuid: data.user.id,
                 email: data.user.email,
                 created_at: new Date().toISOString(),
-                role: "supervisor", // Default role, adjust as needed
+                role: "supervisor", // Default role for new users only
                 // organization_id: null, // Set if you have org logic
               },
-            ],
-            { onConflict: "uuid" }
-          );
+            ]);
+          }
         }
         router.push("/dashboard");
       } catch (error) {
