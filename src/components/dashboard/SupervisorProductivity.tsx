@@ -147,19 +147,15 @@ export function SupervisorProductivity() {
         const productivityData = Object.values(userProductivityMap)
           .filter((user) => user.targetsCount > 0) // Only include users with data
           .map((user) => {
-            // Productivity formula: base score from achievement + bonus for exceeded targets
-            const baseScore = Math.min(
-              (user.averageAchievement / 100) * 80,
-              80
-            ); // 80% max from achievement
-            const exceededBonus = Math.min(
-              (user.exceededCount / user.targetsCount) * 20,
-              20
-            ); // 20% max from exceeded ratio
+            // Simplified productivity formula: just average achievement percentage
+            const productivity = Math.min(
+              Math.round(user.averageAchievement),
+              100
+            );
 
             return {
               ...user,
-              productivity: Math.round(baseScore + exceededBonus),
+              productivity,
               averageAchievement: Math.round(user.averageAchievement),
             };
           })
