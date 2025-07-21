@@ -20,7 +20,12 @@ import {
   TableRow,
 } from "@/src/components/ui/table";
 import { createClient } from "@/src/lib/supabase/client";
-import { faBullseye, faEye } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBullseye,
+  faEdit,
+  faEye,
+  faTrash,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useEffect, useMemo, useState } from "react";
@@ -49,7 +54,21 @@ interface AddTargetFormValues {
   target_value: string;
 }
 
+interface EditTargetFormValues {
+  target_name: string;
+  target_value: string;
+}
+
 const schema = yup.object({
+  target_name: yup.string().required("Target name is required"),
+  target_value: yup
+    .string()
+    .required("Target value is required")
+    .trim()
+    .min(1, "Target value cannot be empty"),
+});
+
+const editSchema = yup.object({
   target_name: yup.string().required("Target name is required"),
   target_value: yup
     .string()
@@ -68,8 +87,14 @@ export default function TargetsPage() {
   const [loading, setLoading] = useState(true);
   const [modalUser, setModalUser] = useState<User | null>(null);
   const [viewUser, setViewUser] = useState<User | null>(null);
+  const [editingTarget, setEditingTarget] = useState<Target | null>(null);
+  const [deletingTargetId, setDeletingTargetId] = useState<number | null>(null);
   const form = useForm<AddTargetFormValues>({
     resolver: yupResolver(schema),
+    defaultValues: { target_name: "", target_value: "" },
+  });
+  const editForm = useForm<EditTargetFormValues>({
+    resolver: yupResolver(editSchema),
     defaultValues: { target_name: "", target_value: "" },
   });
 
@@ -119,9 +144,55 @@ export default function TargetsPage() {
       form.reset();
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value");
+        .select("id, user_uuid, target_name, target_value, created_at");
       setTargets(targetsData || []);
     }
+  };
+
+  const handleEditTarget = async (values: EditTargetFormValues) => {
+    if (!editingTarget) return;
+    const { error } = await supabase
+      .from("targets")
+      .update({
+        target_name: values.target_name,
+        target_value: values.target_value,
+      })
+      .eq("id", editingTarget.id);
+    if (error) {
+      toast.error(error.message || "Failed to update target");
+    } else {
+      toast.success("Target updated successfully");
+      setEditingTarget(null);
+      editForm.reset();
+      const { data: targetsData } = await supabase
+        .from("targets")
+        .select("id, user_uuid, target_name, target_value, created_at");
+      setTargets(targetsData || []);
+    }
+  };
+
+  const handleDeleteTarget = async (targetId: number) => {
+    setDeletingTargetId(targetId);
+    const { error } = await supabase
+      .from("targets")
+      .delete()
+      .eq("id", targetId);
+    if (error) {
+      toast.error(error.message || "Failed to delete target");
+    } else {
+      toast.success("Target deleted successfully");
+      const { data: targetsData } = await supabase
+        .from("targets")
+        .select("id, user_uuid, target_name, target_value, created_at");
+      setTargets(targetsData || []);
+    }
+    setDeletingTargetId(null);
+  };
+
+  const openEditModal = (target: Target) => {
+    setEditingTarget(target);
+    editForm.setValue("target_name", target.target_name);
+    editForm.setValue("target_value", target.target_value);
   };
 
   // Helper to count targets for a user
@@ -327,6 +398,7 @@ export default function TargetsPage() {
                                       <TableHead>Target Name</TableHead>
                                       <TableHead>Value</TableHead>
                                       <TableHead>Created At</TableHead>
+                                      <TableHead>Actions</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -345,6 +417,43 @@ export default function TargetsPage() {
                                               ).toLocaleString()
                                             : "-"}
                                         </TableCell>
+                                        <TableCell>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-blue-600 border-blue-200"
+                                              onClick={() =>
+                                                openEditModal(target)
+                                              }
+                                            >
+                                              <FontAwesomeIcon
+                                                icon={faEdit}
+                                                className="mr-1"
+                                              />
+                                              Edit
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-red-600 border-red-200"
+                                              onClick={() =>
+                                                handleDeleteTarget(target.id)
+                                              }
+                                              disabled={
+                                                deletingTargetId === target.id
+                                              }
+                                            >
+                                              <FontAwesomeIcon
+                                                icon={faTrash}
+                                                className="mr-1"
+                                              />
+                                              {deletingTargetId === target.id
+                                                ? "Deleting..."
+                                                : "Delete"}
+                                            </Button>
+                                          </div>
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
@@ -362,6 +471,72 @@ export default function TargetsPage() {
           </Table>
         </div>
       </div>
+
+      {/* Edit Target Modal */}
+      <Dialog
+        open={editingTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingTarget(null);
+            editForm.reset();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Target</DialogTitle>
+          </DialogHeader>
+          {editingTarget && (
+            <form
+              onSubmit={editForm.handleSubmit(handleEditTarget)}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="edit_target_name">Target Name</Label>
+                <Input
+                  id="edit_target_name"
+                  {...editForm.register("target_name")}
+                />
+                {editForm.formState.errors.target_name && (
+                  <ErrorText>
+                    {editForm.formState.errors.target_name.message}
+                  </ErrorText>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="edit_target_value">Target Value</Label>
+                <Input
+                  id="edit_target_value"
+                  type="text"
+                  placeholder="Enter target value"
+                  {...editForm.register("target_value")}
+                />
+                {editForm.formState.errors.target_value && (
+                  <ErrorText>
+                    {editForm.formState.errors.target_value.message}
+                  </ErrorText>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  Update Target
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setEditingTarget(null);
+                    editForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
