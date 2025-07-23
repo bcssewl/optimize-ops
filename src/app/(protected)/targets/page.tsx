@@ -437,7 +437,6 @@ export default function TargetsPage() {
                                         <TableHead>Target Name</TableHead>
                                         <TableHead>Value</TableHead>
                                         <TableHead>Date</TableHead>
-                                        <TableHead>Created At</TableHead>
                                         <TableHead>Actions</TableHead>
                                       </TableRow>
                                     </TableHeader>
@@ -483,15 +482,6 @@ export default function TargetsPage() {
                                               }
                                             >
                                               {formatDate(target.date)}
-                                            </span>
-                                          </TableCell>
-                                          <TableCell>
-                                            <span className="text-sm">
-                                              {target.created_at
-                                                ? new Date(
-                                                    target.created_at
-                                                  ).toLocaleDateString()
-                                                : "-"}
                                             </span>
                                           </TableCell>
                                           <TableCell>
