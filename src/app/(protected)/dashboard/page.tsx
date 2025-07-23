@@ -1,6 +1,13 @@
 "use client";
 import { SupervisorDashboard } from "@/src/components/dashboard/SupervisorDashboard";
 import { SupervisorProductivity } from "@/src/components/dashboard/SupervisorProductivity";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import {
@@ -31,8 +38,53 @@ interface Recording {
   created_at: string;
 }
 
+type DateFilter =
+  | "today"
+  | "yesterday"
+  | "last7days"
+  | "last30days"
+  | "alltime";
+
+// Helper function to get date range based on filter
+const getDateRange = (filter: DateFilter) => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  switch (filter) {
+    case "today":
+      return {
+        start: today.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "yesterday":
+      return {
+        start: yesterday.toISOString().split("T")[0],
+        end: yesterday.toISOString().split("T")[0],
+      };
+    case "last7days":
+      const last7Days = new Date(today);
+      last7Days.setDate(last7Days.getDate() - 7);
+      return {
+        start: last7Days.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "last30days":
+      const last30Days = new Date(today);
+      last30Days.setDate(last30Days.getDate() - 30);
+      return {
+        start: last30Days.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "alltime":
+    default:
+      return null; // No date filter
+  }
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
+  const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
   const [stats, setStats] = useState({
     users: 0,
     departments: 0,
@@ -48,7 +100,43 @@ export default function DashboardPage() {
     const supabase = createClient();
     const fetchStats = async () => {
       setStatsLoading(true);
+      const dateRange = getDateRange(dateFilter);
+      
       if (user.role === "admin" || user.role === "manager") {
+        // Build queries with date filtering
+        let recordingsQuery = supabase
+          .from("recordings")
+          .select("analysis, status, created_at")
+          .eq("status", "success")
+          .not("analysis", "is", null)
+          .order("created_at", { ascending: false });
+
+        let recordingsCountQuery = supabase
+          .from("recordings")
+          .select("id", { count: "exact", head: true });
+
+        let targetsCountQuery = supabase
+          .from("targets")
+          .select("id", { count: "exact", head: true });
+
+        // Apply date filtering if specified
+        if (dateRange) {
+          recordingsQuery = recordingsQuery
+            .gte("created_at", `${dateRange.start}T00:00:00`)
+            .lte("created_at", `${dateRange.end}T23:59:59`)
+            .limit(20);
+
+          recordingsCountQuery = recordingsCountQuery
+            .gte("created_at", `${dateRange.start}T00:00:00`)
+            .lte("created_at", `${dateRange.end}T23:59:59`);
+
+          targetsCountQuery = targetsCountQuery
+            .gte("date", dateRange.start)
+            .lte("date", dateRange.end);
+        } else {
+          recordingsQuery = recordingsQuery.limit(20);
+        }
+
         const [
           { count: usersRaw },
           { count: departmentsRaw },
@@ -60,17 +148,9 @@ export default function DashboardPage() {
           supabase
             .from("departments")
             .select("id", { count: "exact", head: true }),
-          supabase.from("targets").select("id", { count: "exact", head: true }),
-          supabase
-            .from("recordings")
-            .select("id", { count: "exact", head: true }),
-          supabase
-            .from("recordings")
-            .select("analysis, status")
-            .eq("status", "success")
-            .not("analysis", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(20),
+          targetsCountQuery,
+          recordingsCountQuery,
+          recordingsQuery,
         ]);
 
         const users = typeof usersRaw === "number" ? usersRaw : 0;
@@ -91,11 +171,19 @@ export default function DashboardPage() {
         });
         setAnalysisData(allAnalysis);
       } else if (user.role === "supervisor" || user.role === "staff") {
-        // Count targets assigned to this supervisor/staff member
-        const { count: myTargetsRaw } = await supabase
+        // Count targets assigned to this supervisor/staff member with date filtering
+        let myTargetsQuery = supabase
           .from("targets")
           .select("id", { count: "exact", head: true })
           .eq("user_uuid", user.id);
+
+        if (dateRange) {
+          myTargetsQuery = myTargetsQuery
+            .gte("date", dateRange.start)
+            .lte("date", dateRange.end);
+        }
+
+        const { count: myTargetsRaw } = await myTargetsQuery;
         const myTargets = typeof myTargetsRaw === "number" ? myTargetsRaw : 0;
         setStats({
           users: 0,
@@ -108,7 +196,7 @@ export default function DashboardPage() {
       setStatsLoading(false);
     };
     fetchStats();
-  }, [user, loading]);
+  }, [user, loading, dateFilter]); // Added dateFilter as dependency
 
   // Calculate analytics from analysis data for admin/manager
   const getAnalytics = () => {
@@ -165,6 +253,29 @@ export default function DashboardPage() {
   if (user?.role === "admin" || user?.role === "manager") {
     return (
       <div className="w-full mx-auto py-12 px-4 md:px-4">
+        {/* Date Filter Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-1">Overview of system analytics and performance</p>
+          </div>
+          <Select
+            value={dateFilter}
+            onValueChange={(value: DateFilter) => setDateFilter(value)}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="last7days">Last 7 Days</SelectItem>
+              <SelectItem value="last30days">Last 30 Days</SelectItem>
+              <SelectItem value="alltime">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Main Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
@@ -214,69 +325,67 @@ export default function DashboardPage() {
         </div>
 
         {/* Analysis Overview */}
-        {analysisData.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-blue-100 text-sm">Total Analyzed</div>
-                <FontAwesomeIcon icon={faChartLine} width={20} height={20} />
-              </div>
-              <div className="text-3xl font-bold">
-                {analytics.totalAnalyzed}
-              </div>
-              <div className="text-blue-100 text-xs mt-1">
-                From voice recordings
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-blue-100 text-sm">Total Analyzed</div>
+              <FontAwesomeIcon icon={faChartLine} width={20} height={20} />
             </div>
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-green-100 text-sm">Exceeded Targets</div>
-                <FontAwesomeIcon icon={faCheckCircle} width={20} height={20} />
-              </div>
-              <div className="text-3xl font-bold">
-                {analytics.exceededTargets}
-              </div>
-              <div className="text-green-100 text-xs mt-1">
-                Outstanding performance
-              </div>
+            <div className="text-3xl font-bold">
+              {analytics.totalAnalyzed}
             </div>
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-orange-100 text-sm">In Progress</div>
-                <FontAwesomeIcon icon={faSpinner} width={20} height={20} />
-              </div>
-              <div className="text-3xl font-bold">
-                {analytics.inProgressTargets}
-              </div>
-              <div className="text-orange-100 text-xs mt-1">
-                Active work items
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-purple-100 text-sm">Avg Achievement</div>
-                <FontAwesomeIcon icon={faBullseye} width={20} height={20} />
-              </div>
-              <div className="text-3xl font-bold">
-                {analytics.averageAchievement}%
-              </div>
-              <div className="text-purple-100 text-xs mt-1">
-                Overall performance
-              </div>
+            <div className="text-blue-100 text-xs mt-1">
+              From voice recordings
             </div>
           </div>
-        )}
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-green-100 text-sm">Exceeded Targets</div>
+              <FontAwesomeIcon icon={faCheckCircle} width={20} height={20} />
+            </div>
+            <div className="text-3xl font-bold">
+              {analytics.exceededTargets}
+            </div>
+            <div className="text-green-100 text-xs mt-1">
+              Outstanding performance
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-orange-100 text-sm">In Progress</div>
+              <FontAwesomeIcon icon={faSpinner} width={20} height={20} />
+            </div>
+            <div className="text-3xl font-bold">
+              {analytics.inProgressTargets}
+            </div>
+            <div className="text-orange-100 text-xs mt-1">
+              Active work items
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-purple-100 text-sm">Avg Achievement</div>
+              <FontAwesomeIcon icon={faBullseye} width={20} height={20} />
+            </div>
+            <div className="text-3xl font-bold">
+              {analytics.averageAchievement}%
+            </div>
+            <div className="text-purple-100 text-xs mt-1">
+              Overall performance
+            </div>
+          </div>
+        </div>
         <SupervisorProductivity />
 
         {/* Recent Analysis Results */}
-        {analysisData.length > 0 && (
-          <div className="bg-white rounded-xl shadow p-6 my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Recent Target Analysis</h2>
-              <span className="text-sm text-gray-500">
-                Based on latest voice recordings
-              </span>
-            </div>
+        <div className="bg-white rounded-xl shadow p-6 my-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Recent Target Analysis</h2>
+            <span className="text-sm text-gray-500">
+              Based on latest voice recordings
+            </span>
+          </div>
+          {analysisData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -370,8 +479,12 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No analysis data available for the selected period</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
