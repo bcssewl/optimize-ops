@@ -234,7 +234,7 @@ export function SupervisorDashboard() {
         : 0;
 
     return {
-      totalTargets: Math.max(targets.length, analysisData.length),
+      totalTargets: targets.length, // Use actual assigned targets count
       completedTargets,
       exceededTargets,
       inProgressTargets,

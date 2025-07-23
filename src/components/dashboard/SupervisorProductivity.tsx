@@ -91,8 +91,22 @@ export function SupervisorProductivity() {
           .eq("status", "success")
           .not("analysis", "is", null);
 
+        // Fetch actual targets assigned to all supervisors/staff
+        const { data: targets, error: targetsError } = await supabase
+          .from("targets")
+          .select("user_uuid, id")
+          .in(
+            "user_uuid",
+            users.map((u) => u.uuid)
+          );
+
         if (recordingsError) {
           console.error("Error fetching recordings:", recordingsError);
+          return;
+        }
+
+        if (targetsError) {
+          console.error("Error fetching targets:", targetsError);
           return;
         }
 
@@ -111,7 +125,18 @@ export function SupervisorProductivity() {
           };
         });
 
-        // Process recordings and analysis data
+        // Count actual assigned targets for each user
+        targets?.forEach((target) => {
+          const userData = userProductivityMap[target.user_uuid];
+          if (userData) {
+            userData.targetsCount++;
+          }
+        });
+
+        // Process recordings and analysis data for achievements and exceeded counts
+        // Track analysis count separately for average calculation
+        const userAnalysisCount: Record<string, number> = {};
+
         recordings?.forEach((recording) => {
           if (recording.analysis && Array.isArray(recording.analysis)) {
             const analysisArray = recording.analysis as AnalysisData[];
@@ -119,7 +144,10 @@ export function SupervisorProductivity() {
             analysisArray.forEach((analysis) => {
               const userData = userProductivityMap[recording.user_uuid];
               if (userData) {
-                userData.targetsCount++;
+                // Track analysis count for this user
+                userAnalysisCount[recording.user_uuid] =
+                  (userAnalysisCount[recording.user_uuid] || 0) + 1;
+                const analysisCount = userAnalysisCount[recording.user_uuid];
 
                 // Count exceeded targets
                 if (
@@ -135,9 +163,9 @@ export function SupervisorProductivity() {
                     : 0;
 
                 userData.averageAchievement =
-                  (userData.averageAchievement * (userData.targetsCount - 1) +
+                  (userData.averageAchievement * (analysisCount - 1) +
                     achievement) /
-                  userData.targetsCount;
+                  analysisCount;
               }
             });
           }
@@ -145,13 +173,14 @@ export function SupervisorProductivity() {
 
         // Calculate final productivity scores and prepare data
         const productivityData = Object.values(userProductivityMap)
-          .filter((user) => user.targetsCount > 0) // Only include users with data
+          .filter((user) => user.targetsCount > 0) // Only include users with assigned targets
           .map((user) => {
             // Simplified productivity formula: just average achievement percentage
-            const productivity = Math.min(
-              Math.round(user.averageAchievement),
-              100
-            );
+            // If no analysis data, productivity is 0
+            const productivity =
+              user.averageAchievement > 0
+                ? Math.min(Math.round(user.averageAchievement), 100)
+                : 0;
 
             return {
               ...user,
@@ -214,7 +243,7 @@ export function SupervisorProductivity() {
               const user = supervisorData[index];
               return [
                 `Productivity: ${context.parsed.y}%`,
-                `Targets: ${user?.targetsCount || 0}`,
+                `Assigned Targets: ${user?.targetsCount || 0}`,
                 `Exceeded: ${user?.exceededCount || 0}`,
                 `Avg Achievement: ${user?.averageAchievement || 0}%`,
               ];
@@ -307,7 +336,7 @@ export function SupervisorProductivity() {
                   {sup.role}
                 </div>
                 <div className="text-xs text-gray-600 mb-2">
-                  {sup.targetsCount} targets • {sup.exceededCount} exceeded
+                  {sup.targetsCount} assigned • {sup.exceededCount} exceeded
                 </div>
                 <div className="w-full h-2 bg-gray-200 rounded">
                   <div
