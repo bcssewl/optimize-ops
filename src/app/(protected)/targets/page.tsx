@@ -46,6 +46,7 @@ interface Target {
   user_uuid: string;
   target_name: string;
   target_value: string;
+  date?: string;
   created_at?: string;
 }
 
@@ -101,7 +102,14 @@ export default function TargetsPage() {
   // Memoized user targets for view modal
   const viewUserTargets = useMemo(() => {
     if (!viewUser) return [];
-    return targets.filter((t) => t.user_uuid === viewUser.uuid);
+    return targets
+      .filter((t) => t.user_uuid === viewUser.uuid)
+      .sort((a, b) => {
+        // Sort by date first (newest first), then by created_at (newest first)
+        const dateA = a.date || a.created_at || "";
+        const dateB = b.date || b.created_at || "";
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
   }, [viewUser, targets]);
 
   useEffect(() => {
@@ -115,7 +123,7 @@ export default function TargetsPage() {
         supabase.from("users").select("id, email, uuid, role, department_id"),
         supabase
           .from("targets")
-          .select("id, user_uuid, target_name, target_value, created_at"),
+          .select("id, user_uuid, target_name, target_value, date, created_at"),
         supabase.from("departments").select("id, title"),
       ]);
       if (usersError) toast.error("Failed to fetch users");
@@ -131,20 +139,22 @@ export default function TargetsPage() {
 
   const handleAddTarget = async (values: AddTargetFormValues) => {
     if (!modalUser) return;
+    const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
     const { error } = await supabase.from("targets").insert({
       user_uuid: modalUser.uuid,
       target_name: values.target_name,
       target_value: values.target_value,
+      date: today,
     });
     if (error) {
       toast.error(error.message || "Failed to add target");
     } else {
-      toast.success("Target added");
+      toast.success("Target added for today");
       setModalUser(null);
       form.reset();
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, created_at");
+        .select("id, user_uuid, target_name, target_value, date, created_at");
       setTargets(targetsData || []);
     }
   };
@@ -166,7 +176,7 @@ export default function TargetsPage() {
       editForm.reset();
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, created_at");
+        .select("id, user_uuid, target_name, target_value, date, created_at");
       setTargets(targetsData || []);
     }
   };
@@ -183,7 +193,7 @@ export default function TargetsPage() {
       toast.success("Target deleted successfully");
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, created_at");
+        .select("id, user_uuid, target_name, target_value, date, created_at");
       setTargets(targetsData || []);
     }
     setDeletingTargetId(null);
@@ -198,6 +208,30 @@ export default function TargetsPage() {
   // Helper to count targets for a user
   const getUserTargets = (user_uuid: string) =>
     targets.filter((t) => t.user_uuid === user_uuid);
+
+  // Helper to check if target is from today
+  const isToday = (dateString: string | null | undefined) => {
+    if (!dateString) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return dateString === today;
+  };
+
+  // Helper to format date in human readable way
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "No date";
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (dateString === today.toISOString().split("T")[0]) {
+      return "Today";
+    } else if (dateString === yesterday.toISOString().split("T")[0]) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
@@ -297,12 +331,12 @@ export default function TargetsPage() {
                               variant="outline"
                               className="text-blue-600 border-blue-200"
                             >
-                              + Add Target
+                              + Add Today's Target
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Add Target</DialogTitle>
+                              <DialogTitle>Add Today's Target</DialogTitle>
                             </DialogHeader>
                             <div className="mb-4 flex flex-col gap-1">
                               <div className="font-medium">{user.email}</div>
@@ -324,6 +358,10 @@ export default function TargetsPage() {
                                       user.role.slice(1)}
                                   </span>
                                 ) : null}
+                                <span className="text-blue-600 font-medium">
+                                  <strong>Date:</strong>{" "}
+                                  {new Date().toLocaleDateString()}
+                                </span>
                               </div>
                             </div>
                             <form
@@ -359,7 +397,7 @@ export default function TargetsPage() {
                                 )}
                               </div>
                               <Button type="submit" className="w-full">
-                                Add Target
+                                Add Today's Target
                               </Button>
                             </form>
                           </DialogContent>
@@ -380,8 +418,8 @@ export default function TargetsPage() {
                             setViewUser(open ? user : null)
                           }
                         >
-                          <DialogContent>
-                            <DialogHeader>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                            <DialogHeader className="flex-shrink-0">
                               <DialogTitle>
                                 Targets for {user.email}
                               </DialogTitle>
@@ -391,73 +429,103 @@ export default function TargetsPage() {
                                 No targets found for this user.
                               </div>
                             ) : (
-                              <div className="bg-white rounded-xl border p-0">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Target Name</TableHead>
-                                      <TableHead>Value</TableHead>
-                                      <TableHead>Created At</TableHead>
-                                      <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {viewUserTargets.map((target) => (
-                                      <TableRow key={target.id}>
-                                        <TableCell>
-                                          {target.target_name}
-                                        </TableCell>
-                                        <TableCell>
-                                          {target.target_value}
-                                        </TableCell>
-                                        <TableCell>
-                                          {target.created_at
-                                            ? new Date(
-                                                target.created_at
-                                              ).toLocaleString()
-                                            : "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex gap-2">
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="text-blue-600 border-blue-200"
-                                              onClick={() =>
-                                                openEditModal(target)
-                                              }
-                                            >
-                                              <FontAwesomeIcon
-                                                icon={faEdit}
-                                                className="mr-1"
-                                              />
-                                              Edit
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="text-red-600 border-red-200"
-                                              onClick={() =>
-                                                handleDeleteTarget(target.id)
-                                              }
-                                              disabled={
-                                                deletingTargetId === target.id
-                                              }
-                                            >
-                                              <FontAwesomeIcon
-                                                icon={faTrash}
-                                                className="mr-1"
-                                              />
-                                              {deletingTargetId === target.id
-                                                ? "Deleting..."
-                                                : "Delete"}
-                                            </Button>
-                                          </div>
-                                        </TableCell>
+                              <div className="flex-1 overflow-hidden">
+                                <div className="overflow-auto max-h-[60vh] border rounded-lg">
+                                  <Table>
+                                    <TableHeader className="sticky top-0 bg-white z-10">
+                                      <TableRow>
+                                        <TableHead>Target Name</TableHead>
+                                        <TableHead>Value</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Actions</TableHead>
                                       </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {viewUserTargets.map((target) => (
+                                        <TableRow
+                                          key={target.id}
+                                          className={
+                                            isToday(target.date)
+                                              ? "bg-blue-50 border-blue-200"
+                                              : ""
+                                          }
+                                        >
+                                          <TableCell>
+                                            <div className="flex items-center gap-2">
+                                              <span
+                                                className="max-w-[200px] truncate"
+                                                title={target.target_name}
+                                              >
+                                                {target.target_name}
+                                              </span>
+                                              {isToday(target.date) && (
+                                                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-medium flex-shrink-0">
+                                                  Today
+                                                </span>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <span
+                                              className="max-w-[150px] truncate block"
+                                              title={target.target_value}
+                                            >
+                                              {target.target_value}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell>
+                                            <span
+                                              className={
+                                                isToday(target.date)
+                                                  ? "font-medium text-blue-700"
+                                                  : "text-gray-600"
+                                              }
+                                            >
+                                              {formatDate(target.date)}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="flex gap-1">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-blue-600 border-blue-200 text-xs px-2 py-1"
+                                                onClick={() =>
+                                                  openEditModal(target)
+                                                }
+                                              >
+                                                <FontAwesomeIcon
+                                                  icon={faEdit}
+                                                  className="mr-1"
+                                                />
+                                                Edit
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-red-600 border-red-200 text-xs px-2 py-1"
+                                                onClick={() =>
+                                                  handleDeleteTarget(target.id)
+                                                }
+                                                disabled={
+                                                  deletingTargetId === target.id
+                                                }
+                                              >
+                                                <FontAwesomeIcon
+                                                  icon={faTrash}
+                                                  className="mr-1"
+                                                />
+                                                {deletingTargetId === target.id
+                                                  ? "..."
+                                                  : "Delete"}
+                                              </Button>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
                               </div>
                             )}
                           </DialogContent>

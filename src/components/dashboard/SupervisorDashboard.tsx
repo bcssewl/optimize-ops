@@ -1,6 +1,13 @@
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
+import {
   faCheckCircle,
   faDollarSign,
   faEnvelope,
@@ -39,6 +46,50 @@ interface Recording {
   status: string;
   created_at: string;
 }
+
+type DateFilter =
+  | "today"
+  | "yesterday"
+  | "last7days"
+  | "last30days"
+  | "alltime";
+
+// Helper function to get date range based on filter
+const getDateRange = (filter: DateFilter) => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  switch (filter) {
+    case "today":
+      return {
+        start: today.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "yesterday":
+      return {
+        start: yesterday.toISOString().split("T")[0],
+        end: yesterday.toISOString().split("T")[0],
+      };
+    case "last7days":
+      const last7Days = new Date(today);
+      last7Days.setDate(last7Days.getDate() - 7);
+      return {
+        start: last7Days.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "last30days":
+      const last30Days = new Date(today);
+      last30Days.setDate(last30Days.getDate() - 30);
+      return {
+        start: last30Days.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
+    case "alltime":
+    default:
+      return null; // No date filter
+  }
+};
 
 const targetsOverview = [
   {
@@ -140,6 +191,7 @@ const targets = [
 
 export function SupervisorDashboard() {
   const { user, loading } = useAuth();
+  const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
   const [targets, setTargets] = useState<Target[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [analysisData, setAnalysisData] = useState<AnalysisData[]>([]);
@@ -148,24 +200,31 @@ export function SupervisorDashboard() {
   useEffect(() => {
     if (!user || loading) return;
     fetchDashboardData();
-  }, [user, loading]);
+  }, [user, loading, dateFilter]); // Added dateFilter dependency
 
   const fetchDashboardData = async () => {
     if (!user) return;
 
     setLoadingData(true);
     const supabase = createClient();
+    const dateRange = getDateRange(dateFilter);
 
     try {
-      // Fetch user's targets
-      const { data: targetsData } = await supabase
+      // Fetch user's targets with date filtering
+      let targetsQuery = supabase
         .from("targets")
         .select("*")
         .eq("user_uuid", user.id)
         .order("created_at", { ascending: false });
 
-      // Fetch user's recordings with analysis
-      const { data: recordingsData } = await supabase
+      if (dateRange) {
+        targetsQuery = targetsQuery
+          .gte("date", dateRange.start)
+          .lte("date", dateRange.end);
+      }
+
+      // Fetch user's recordings with analysis and date filtering
+      let recordingsQuery = supabase
         .from("recordings")
         .select("*")
         .eq("user_uuid", user.id)
@@ -173,6 +232,15 @@ export function SupervisorDashboard() {
         .not("analysis", "is", null)
         .order("created_at", { ascending: false })
         .limit(10);
+
+      if (dateRange) {
+        recordingsQuery = recordingsQuery
+          .gte("created_at", `${dateRange.start}T00:00:00`)
+          .lte("created_at", `${dateRange.end}T23:59:59`);
+      }
+
+      const [{ data: targetsData }, { data: recordingsData }] =
+        await Promise.all([targetsQuery, recordingsQuery]);
 
       setTargets(targetsData || []);
       setRecordings(recordingsData || []);
@@ -234,7 +302,7 @@ export function SupervisorDashboard() {
         : 0;
 
     return {
-      totalTargets: Math.max(targets.length, analysisData.length),
+      totalTargets: targets.length, // Use actual assigned targets count
       completedTargets,
       exceededTargets,
       inProgressTargets,
@@ -361,6 +429,29 @@ export function SupervisorDashboard() {
 
   return (
     <div className="space-y-6 w-full">
+      {/* Header with Date Filter */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
+          <p className="text-gray-600 mt-1">Track your targets and performance</p>
+        </div>
+        <Select
+          value={dateFilter}
+          onValueChange={(value: DateFilter) => setDateFilter(value)}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="last7days">Last 7 Days</SelectItem>
+            <SelectItem value="last30days">Last 30 Days</SelectItem>
+            <SelectItem value="alltime">All Time</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Profile Info */}
       <div className="bg-white rounded-xl shadow p-6 flex flex-col gap-4">
         <div className="font-semibold text-lg mb-2">Profile Information</div>

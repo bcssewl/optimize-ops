@@ -3,6 +3,13 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   BarElement,
@@ -43,6 +50,26 @@ interface UserProductivity {
   exceededCount: number;
 }
 
+type DateFilter =
+  | "today"
+  | "yesterday"
+  | "last7days"
+  | "last30days"
+  | "alltime";
+
+interface DateFilterOption {
+  value: DateFilter;
+  label: string;
+}
+
+const dateFilterOptions: DateFilterOption[] = [
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "last7days", label: "Last 7 Days" },
+  { value: "last30days", label: "Last 30 Days" },
+  { value: "alltime", label: "All Time" },
+];
+
 const getColorByProductivity = (productivity: number) => {
   if (productivity >= 85) return "#22c55e"; // Green
   if (productivity >= 70) return "#3b82f6"; // Blue
@@ -57,11 +84,51 @@ const getInitials = (email: string) => {
 export function SupervisorProductivity() {
   const [supervisorData, setSupervisorData] = useState<UserProductivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
+
+  // Helper function to get date range based on filter
+  const getDateRange = (filter: DateFilter) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    switch (filter) {
+      case "today":
+        return {
+          start: today.toISOString().split("T")[0],
+          end: today.toISOString().split("T")[0],
+        };
+      case "yesterday":
+        return {
+          start: yesterday.toISOString().split("T")[0],
+          end: yesterday.toISOString().split("T")[0],
+        };
+      case "last7days":
+        const last7Days = new Date(today);
+        last7Days.setDate(last7Days.getDate() - 7);
+        return {
+          start: last7Days.toISOString().split("T")[0],
+          end: today.toISOString().split("T")[0],
+        };
+      case "last30days":
+        const last30Days = new Date(today);
+        last30Days.setDate(last30Days.getDate() - 30);
+        return {
+          start: last30Days.toISOString().split("T")[0],
+          end: today.toISOString().split("T")[0],
+        };
+      case "alltime":
+      default:
+        return null; // No date filter
+    }
+  };
 
   useEffect(() => {
     const fetchSupervisorProductivity = async () => {
       try {
+        setLoading(true);
         const supabase = createClient();
+        const dateRange = getDateRange(dateFilter);
 
         // Fetch all supervisors and staff
         const { data: users, error: usersError } = await supabase
@@ -81,9 +148,9 @@ export function SupervisorProductivity() {
         }
 
         // Fetch recordings with analysis for all supervisors/staff
-        const { data: recordings, error: recordingsError } = await supabase
+        let recordingsQuery = supabase
           .from("recordings")
-          .select("user_uuid, analysis, status")
+          .select("user_uuid, analysis, status, created_at")
           .in(
             "user_uuid",
             users.map((u) => u.uuid)
@@ -91,8 +158,41 @@ export function SupervisorProductivity() {
           .eq("status", "success")
           .not("analysis", "is", null);
 
+        // Apply date filter if specified
+        if (dateRange) {
+          recordingsQuery = recordingsQuery
+            .gte("created_at", `${dateRange.start}T00:00:00`)
+            .lte("created_at", `${dateRange.end}T23:59:59`);
+        }
+
+        const { data: recordings, error: recordingsError } =
+          await recordingsQuery;
+
+        // Fetch actual targets assigned to all supervisors/staff
+        let targetsQuery = supabase
+          .from("targets")
+          .select("user_uuid, id, date, created_at")
+          .in(
+            "user_uuid",
+            users.map((u) => u.uuid)
+          );
+
+        // Apply date filter to targets based on their date field
+        if (dateRange) {
+          targetsQuery = targetsQuery
+            .gte("date", dateRange.start)
+            .lte("date", dateRange.end);
+        }
+
+        const { data: targets, error: targetsError } = await targetsQuery;
+
         if (recordingsError) {
           console.error("Error fetching recordings:", recordingsError);
+          return;
+        }
+
+        if (targetsError) {
+          console.error("Error fetching targets:", targetsError);
           return;
         }
 
@@ -111,7 +211,18 @@ export function SupervisorProductivity() {
           };
         });
 
-        // Process recordings and analysis data
+        // Count actual assigned targets for each user
+        targets?.forEach((target) => {
+          const userData = userProductivityMap[target.user_uuid];
+          if (userData) {
+            userData.targetsCount++;
+          }
+        });
+
+        // Process recordings and analysis data for achievements and exceeded counts
+        // Track analysis count separately for average calculation
+        const userAnalysisCount: Record<string, number> = {};
+
         recordings?.forEach((recording) => {
           if (recording.analysis && Array.isArray(recording.analysis)) {
             const analysisArray = recording.analysis as AnalysisData[];
@@ -119,7 +230,10 @@ export function SupervisorProductivity() {
             analysisArray.forEach((analysis) => {
               const userData = userProductivityMap[recording.user_uuid];
               if (userData) {
-                userData.targetsCount++;
+                // Track analysis count for this user
+                userAnalysisCount[recording.user_uuid] =
+                  (userAnalysisCount[recording.user_uuid] || 0) + 1;
+                const analysisCount = userAnalysisCount[recording.user_uuid];
 
                 // Count exceeded targets
                 if (
@@ -135,9 +249,9 @@ export function SupervisorProductivity() {
                     : 0;
 
                 userData.averageAchievement =
-                  (userData.averageAchievement * (userData.targetsCount - 1) +
+                  (userData.averageAchievement * (analysisCount - 1) +
                     achievement) /
-                  userData.targetsCount;
+                  analysisCount;
               }
             });
           }
@@ -145,13 +259,14 @@ export function SupervisorProductivity() {
 
         // Calculate final productivity scores and prepare data
         const productivityData = Object.values(userProductivityMap)
-          .filter((user) => user.targetsCount > 0) // Only include users with data
+          .filter((user) => user.targetsCount > 0) // Only include users with assigned targets
           .map((user) => {
             // Simplified productivity formula: just average achievement percentage
-            const productivity = Math.min(
-              Math.round(user.averageAchievement),
-              100
-            );
+            // If no analysis data, productivity is 0
+            const productivity =
+              user.averageAchievement > 0
+                ? Math.min(Math.round(user.averageAchievement), 100)
+                : 0;
 
             return {
               ...user,
@@ -171,7 +286,7 @@ export function SupervisorProductivity() {
     };
 
     fetchSupervisorProductivity();
-  }, []);
+  }, [dateFilter]); // Re-fetch when date filter changes
 
   const chartData = useMemo(
     () => ({
@@ -214,7 +329,7 @@ export function SupervisorProductivity() {
               const user = supervisorData[index];
               return [
                 `Productivity: ${context.parsed.y}%`,
-                `Targets: ${user?.targetsCount || 0}`,
+                `Assigned Targets: ${user?.targetsCount || 0}`,
                 `Exceeded: ${user?.exceededCount || 0}`,
                 `Avg Achievement: ${user?.averageAchievement || 0}%`,
               ];
@@ -241,14 +356,36 @@ export function SupervisorProductivity() {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl shadow border border-gray-100 p-6 mt-8">
-        <h2 className="text-lg md:text-xl font-bold mb-1">
-          Supervisor Productivity
-        </h2>
-        <p className="text-gray-500 mb-6 text-sm md:text-base">
-          Performance metrics across supervisors
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold mb-1">
+              Supervisor Productivity
+            </h2>
+            <p className="text-gray-500 text-sm md:text-base">
+              Performance metrics across supervisors and staff
+            </p>
+          </div>
+          <Select
+            value={dateFilter}
+            onValueChange={(value: DateFilter) => setDateFilter(value)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="last7days">Last 7 Days</SelectItem>
+              <SelectItem value="last30days">Last 30 Days</SelectItem>
+              <SelectItem value="alltime">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading productivity data...</div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">Loading productivity data...</p>
+          </div>
         </div>
       </div>
     );
@@ -257,12 +394,31 @@ export function SupervisorProductivity() {
   if (supervisorData.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow border border-gray-100 p-6 mt-8">
-        <h2 className="text-lg md:text-xl font-bold mb-1">
-          Supervisor Productivity
-        </h2>
-        <p className="text-gray-500 mb-6 text-sm md:text-base">
-          Performance metrics across supervisors
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold mb-1">
+              Supervisor Productivity
+            </h2>
+            <p className="text-gray-500 text-sm md:text-base">
+              Performance metrics across supervisors and staff
+            </p>
+          </div>
+          <Select
+            value={dateFilter}
+            onValueChange={(value: DateFilter) => setDateFilter(value)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="last7days">Last 7 Days</SelectItem>
+              <SelectItem value="last30days">Last 30 Days</SelectItem>
+              <SelectItem value="alltime">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">No productivity data available</div>
         </div>
@@ -272,65 +428,105 @@ export function SupervisorProductivity() {
 
   return (
     <div className="bg-white rounded-2xl shadow border border-gray-100 p-6 mt-8">
-      <h2 className="text-lg md:text-xl font-bold mb-1">
-        Supervisor Productivity
-      </h2>
-      <p className="text-gray-500 mb-6 text-sm md:text-base">
-        Performance metrics across supervisors and staff
-      </p>
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* ChartJS Bar Chart */}
-        <div className="flex-1 min-w-[300px] flex items-center justify-center">
-          <div className="w-full h-64">
-            <Bar data={chartData} options={chartOptions} />
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg md:text-xl font-bold mb-1">
+            Supervisor Productivity
+          </h2>
+          <p className="text-gray-500 text-sm md:text-base">
+            Performance metrics across supervisors and staff
+          </p>
         </div>
-        {/* Detailed Metrics */}
-        <div className="flex-1 min-w-[300px] flex flex-col gap-4">
-          {supervisorData.map((sup) => (
-            <div
-              key={sup.user_uuid}
-              className="flex items-center gap-4 bg-gray-50 rounded-lg p-4 shadow-sm"
-            >
-              <Avatar className="h-12 w-12">
-                <AvatarImage
-                  src={`/avatars/${sup.email.split("@")[0]}.jpg`}
-                  alt={sup.email}
-                />
-                <AvatarFallback>{getInitials(sup.email)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="font-semibold text-gray-900 text-base">
-                  {sup.email.split("@")[0]}
-                </div>
-                <div className="text-gray-500 text-sm mb-2 capitalize">
-                  {sup.role}
-                </div>
-                <div className="text-xs text-gray-600 mb-2">
-                  {sup.targetsCount} targets • {sup.exceededCount} exceeded
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded">
-                  <div
-                    className="h-2 rounded transition-all duration-500"
-                    style={{
-                      width: `${sup.productivity}%`,
-                      background: getColorByProductivity(sup.productivity),
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col items-end min-w-[60px]">
-                <span
-                  className="text-2xl font-bold leading-none"
-                  style={{ color: getColorByProductivity(sup.productivity) }}
-                >
-                  {sup.productivity}%
-                </span>
-                <span className="text-xs text-gray-500">Productivity</span>
+        <Select
+          value={dateFilter}
+          onValueChange={(value: DateFilter) => setDateFilter(value)}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="last7days">Last 7 Days</SelectItem>
+            <SelectItem value="last30days">Last 30 Days</SelectItem>
+            <SelectItem value="alltime">All Time</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col md:flex-row gap-8">
+        {loading ? (
+          <div className="flex items-center justify-center h-64 w-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">
+                Loading productivity data...
+              </p>
+            </div>
+          </div>
+        ) : supervisorData.length === 0 ? (
+          <div className="flex items-center justify-center h-64 w-full">
+            <div className="text-gray-500">
+              No productivity data available for the selected period
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* ChartJS Bar Chart */}
+            <div className="flex-1 min-w-[300px] flex items-center justify-center">
+              <div className="w-full h-64">
+                <Bar data={chartData} options={chartOptions} />
               </div>
             </div>
-          ))}
-        </div>
+            {/* Detailed Metrics */}
+            <div className="flex-1 min-w-[300px] flex flex-col gap-4">
+              {supervisorData.map((sup) => (
+                <div
+                  key={sup.user_uuid}
+                  className="flex items-center gap-4 bg-gray-50 rounded-lg p-4 shadow-sm"
+                >
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage
+                      src={`/avatars/${sup.email.split("@")[0]}.jpg`}
+                      alt={sup.email}
+                    />
+                    <AvatarFallback>{getInitials(sup.email)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900 text-base">
+                      {sup.email.split("@")[0]}
+                    </div>
+                    <div className="text-gray-500 text-sm mb-2 capitalize">
+                      {sup.role}
+                    </div>
+                    <div className="text-xs text-gray-600 mb-2">
+                      {sup.targetsCount} assigned • {sup.exceededCount} exceeded
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 rounded">
+                      <div
+                        className="h-2 rounded transition-all duration-500"
+                        style={{
+                          width: `${sup.productivity}%`,
+                          background: getColorByProductivity(sup.productivity),
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end min-w-[60px]">
+                    <span
+                      className="text-2xl font-bold leading-none"
+                      style={{
+                        color: getColorByProductivity(sup.productivity),
+                      }}
+                    >
+                      {sup.productivity}%
+                    </span>
+                    <span className="text-xs text-gray-500">Productivity</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
