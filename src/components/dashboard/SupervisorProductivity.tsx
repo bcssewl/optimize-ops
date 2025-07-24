@@ -3,13 +3,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/src/components/ui/select";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   BarElement,
@@ -57,18 +50,9 @@ type DateFilter =
   | "last30days"
   | "alltime";
 
-interface DateFilterOption {
-  value: DateFilter;
-  label: string;
+interface SupervisorProductivityProps {
+  dateFilter: DateFilter;
 }
-
-const dateFilterOptions: DateFilterOption[] = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "last7days", label: "Last 7 Days" },
-  { value: "last30days", label: "Last 30 Days" },
-  { value: "alltime", label: "All Time" },
-];
 
 const getColorByProductivity = (productivity: number) => {
   if (productivity >= 85) return "#22c55e"; // Green
@@ -81,10 +65,11 @@ const getInitials = (email: string) => {
   return email.substring(0, 2).toUpperCase();
 };
 
-export function SupervisorProductivity() {
+export function SupervisorProductivity({
+  dateFilter,
+}: SupervisorProductivityProps) {
   const [supervisorData, setSupervisorData] = useState<UserProductivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
 
   // Helper function to get date range based on filter
   const getDateRange = (filter: DateFilter) => {
@@ -365,26 +350,13 @@ export function SupervisorProductivity() {
               Performance metrics across supervisors and staff
             </p>
           </div>
-          <Select
-            value={dateFilter}
-            onValueChange={(value: DateFilter) => setDateFilter(value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="yesterday">Yesterday</SelectItem>
-              <SelectItem value="last7days">Last 7 Days</SelectItem>
-              <SelectItem value="last30days">Last 30 Days</SelectItem>
-              <SelectItem value="alltime">All Time</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600">Loading productivity data...</p>
+            <p className="text-sm text-gray-600">
+              Loading productivity data...
+            </p>
           </div>
         </div>
       </div>
@@ -403,21 +375,6 @@ export function SupervisorProductivity() {
               Performance metrics across supervisors and staff
             </p>
           </div>
-          <Select
-            value={dateFilter}
-            onValueChange={(value: DateFilter) => setDateFilter(value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="yesterday">Yesterday</SelectItem>
-              <SelectItem value="last7days">Last 7 Days</SelectItem>
-              <SelectItem value="last30days">Last 30 Days</SelectItem>
-              <SelectItem value="alltime">All Time</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">No productivity data available</div>
@@ -437,21 +394,6 @@ export function SupervisorProductivity() {
             Performance metrics across supervisors and staff
           </p>
         </div>
-        <Select
-          value={dateFilter}
-          onValueChange={(value: DateFilter) => setDateFilter(value)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="yesterday">Yesterday</SelectItem>
-            <SelectItem value="last7days">Last 7 Days</SelectItem>
-            <SelectItem value="last30days">Last 30 Days</SelectItem>
-            <SelectItem value="alltime">All Time</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       <div className="flex flex-col md:flex-row gap-8">
         {loading ? (

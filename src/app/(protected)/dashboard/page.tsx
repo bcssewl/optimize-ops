@@ -379,7 +379,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        <SupervisorProductivity />
+        <SupervisorProductivity dateFilter={dateFilter} />
 
         {/* Recent Analysis Results */}
         <div className="bg-white rounded-xl shadow p-6 my-8">
