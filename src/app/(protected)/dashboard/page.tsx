@@ -334,48 +334,48 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-blue-100 text-sm">Total Analyzed</div>
+              <div className="text-blue-100 text-sm">Targets Analyzed</div>
               <FontAwesomeIcon icon={faChartLine} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">{analytics.totalAnalyzed}</div>
             <div className="text-blue-100 text-xs mt-1">
-              From voice recordings
+              From {recordings.length} voice recordings
             </div>
           </div>
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-green-100 text-sm">Exceeded Targets</div>
+              <div className="text-green-100 text-sm">Targets Exceeded</div>
               <FontAwesomeIcon icon={faCheckCircle} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.exceededTargets}
             </div>
             <div className="text-green-100 text-xs mt-1">
-              Outstanding performance
+              Outstanding achievements
             </div>
           </div>
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-orange-100 text-sm">In Progress</div>
+              <div className="text-orange-100 text-sm">Targets In Progress</div>
               <FontAwesomeIcon icon={faSpinner} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.inProgressTargets}
             </div>
             <div className="text-orange-100 text-xs mt-1">
-              Active work items
+              Currently being worked on
             </div>
           </div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-purple-100 text-sm">Avg Achievement</div>
+              <div className="text-purple-100 text-sm">Average Achievement</div>
               <FontAwesomeIcon icon={faBullseye} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.averageAchievement}%
             </div>
             <div className="text-purple-100 text-xs mt-1">
-              Overall performance
+              Across all analyzed targets
             </div>
           </div>
         </div>
