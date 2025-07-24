@@ -93,6 +93,7 @@ export default function DashboardPage() {
     recordings: 0,
   });
   const [analysisData, setAnalysisData] = useState<AnalysisData[]>([]);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
   useEffect(() => {
@@ -101,12 +102,12 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       setStatsLoading(true);
       const dateRange = getDateRange(dateFilter);
-      
+
       if (user.role === "admin" || user.role === "manager") {
         // Build queries with date filtering
         let recordingsQuery = supabase
           .from("recordings")
-          .select("analysis, status, created_at")
+          .select("id, analysis, status, created_at, user_uuid")
           .eq("status", "success")
           .not("analysis", "is", null)
           .order("created_at", { ascending: false });
@@ -161,6 +162,9 @@ export default function DashboardPage() {
           typeof recordingsRaw === "number" ? recordingsRaw : 0;
 
         setStats({ users, departments, targets, myTargets: 0, recordings });
+
+        // Store the recordings data for organized display
+        setRecordings(recordingsData || []);
 
         // Extract analysis data from recordings
         const allAnalysis: AnalysisData[] = [];
@@ -257,7 +261,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Overview of system analytics and performance</p>
+            <p className="text-gray-600 mt-1">
+              Overview of system analytics and performance
+            </p>
           </div>
           <Select
             value={dateFilter}
@@ -328,54 +334,52 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-blue-100 text-sm">Total Analyzed</div>
+              <div className="text-blue-100 text-sm">Targets Analyzed</div>
               <FontAwesomeIcon icon={faChartLine} width={20} height={20} />
             </div>
-            <div className="text-3xl font-bold">
-              {analytics.totalAnalyzed}
-            </div>
+            <div className="text-3xl font-bold">{analytics.totalAnalyzed}</div>
             <div className="text-blue-100 text-xs mt-1">
-              From voice recordings
+              From {recordings.length} voice recordings
             </div>
           </div>
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-green-100 text-sm">Exceeded Targets</div>
+              <div className="text-green-100 text-sm">Targets Exceeded</div>
               <FontAwesomeIcon icon={faCheckCircle} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.exceededTargets}
             </div>
             <div className="text-green-100 text-xs mt-1">
-              Outstanding performance
+              Outstanding achievements
             </div>
           </div>
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-orange-100 text-sm">In Progress</div>
+              <div className="text-orange-100 text-sm">Targets In Progress</div>
               <FontAwesomeIcon icon={faSpinner} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.inProgressTargets}
             </div>
             <div className="text-orange-100 text-xs mt-1">
-              Active work items
+              Currently being worked on
             </div>
           </div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-purple-100 text-sm">Avg Achievement</div>
+              <div className="text-purple-100 text-sm">Average Achievement</div>
               <FontAwesomeIcon icon={faBullseye} width={20} height={20} />
             </div>
             <div className="text-3xl font-bold">
               {analytics.averageAchievement}%
             </div>
             <div className="text-purple-100 text-xs mt-1">
-              Overall performance
+              Across all analyzed targets
             </div>
           </div>
         </div>
-        <SupervisorProductivity />
+        <SupervisorProductivity dateFilter={dateFilter} />
 
         {/* Recent Analysis Results */}
         <div className="bg-white rounded-xl shadow p-6 my-8">
@@ -385,99 +389,152 @@ export default function DashboardPage() {
               Based on latest voice recordings
             </span>
           </div>
-          {analysisData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b">
-                    <th className="py-3 px-4 font-medium">Target Name</th>
-                    <th className="py-3 px-4 font-medium">Target Value</th>
-                    <th className="py-3 px-4 font-medium">Achievement</th>
-                    <th className="py-3 px-4 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analysisData.slice(0, 10).map((item, index) => {
-                    const getStatusColor = (status: string) => {
-                      if (status.toLowerCase().includes("exceeded")) {
-                        return "bg-green-100 text-green-700";
-                      } else if (
-                        status.toLowerCase().includes("progress") ||
-                        status.toLowerCase().includes("started")
-                      ) {
-                        return "bg-yellow-100 text-yellow-700";
-                      } else {
-                        return "bg-blue-100 text-blue-700";
-                      }
-                    };
+          {recordings.length > 0 ? (
+            <div className="space-y-6">
+              {recordings.slice(0, 10).map((recording, recordingIndex) => {
+                const analysisArray = recording.analysis as AnalysisData[];
+                const recordingDate = new Date(
+                  recording.created_at
+                ).toLocaleDateString();
+                const recordingTime = new Date(
+                  recording.created_at
+                ).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
 
-                    const achievement =
-                      typeof item.percentage_achieve === "number"
-                        ? item.percentage_achieve
-                        : 0;
+                return (
+                  <div
+                    key={recording.id}
+                    className="border rounded-lg p-4 bg-gray-50"
+                  >
+                    {/* Recording Header */}
+                    <div
+                      className="flex items-center justify-between mb-3 cursor-pointer"
+                      title={`Recording ID: ${recording.id} | Date: ${recordingDate} ${recordingTime}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FontAwesomeIcon
+                          icon={faSpinner}
+                          width={16}
+                          height={16}
+                          className="text-blue-600"
+                        />
+                        <span className="font-medium text-gray-800">
+                          Recording {recordingIndex + 1}
+                        </span>
+                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                          {recordingDate} {recordingTime}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {analysisArray.length} target
+                        {analysisArray.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
 
-                    return (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="py-3 px-4">
-                          <div className="font-medium">
-                            {(item.target_name || "").length > 50
-                              ? `${(item.target_name || "").substring(
-                                  0,
-                                  50
-                                )}...`
-                              : item.target_name || "N/A"}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-gray-600">
-                            {(item.target_value || "").length > 30
-                              ? `${(item.target_value || "").substring(
-                                  0,
-                                  30
-                                )}...`
-                              : item.target_value || "N/A"}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 h-2 bg-gray-200 rounded overflow-hidden">
-                              <div
-                                className="h-2 rounded transition-all duration-300"
-                                style={{
-                                  width: `${Math.min(achievement, 100)}%`,
-                                  backgroundColor:
-                                    achievement > 100
-                                      ? "#22c55e"
-                                      : achievement > 50
-                                      ? "#3b82f6"
-                                      : "#f97316",
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs font-semibold">
-                              {achievement}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
-                              item.status || ""
-                            )}`}
-                          >
-                            {(item.status || "").length > 20
-                              ? `${(item.status || "").substring(0, 20)}...`
-                              : item.status || "Unknown"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    {/* Targets Table for this Recording */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm table-fixed">
+                        <thead>
+                          <tr className="text-left text-gray-500 border-b">
+                            <th className="py-3 px-4 font-medium w-1/4">
+                              Target Name
+                            </th>
+                            <th className="py-3 px-4 font-medium w-1/4">
+                              Target Value
+                            </th>
+                            <th className="py-3 px-4 font-medium w-1/4">
+                              Achievement
+                            </th>
+                            <th className="py-3 px-4 font-medium w-1/4">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analysisArray.map((item, targetIndex) => {
+                            const getStatusColor = (status: string) => {
+                              if (status.toLowerCase().includes("exceeded")) {
+                                return "bg-green-100 text-green-700";
+                              } else if (
+                                status.toLowerCase().includes("progress") ||
+                                status.toLowerCase().includes("started")
+                              ) {
+                                return "bg-yellow-100 text-yellow-700";
+                              } else {
+                                return "bg-blue-100 text-blue-700";
+                              }
+                            };
+
+                            const achievement =
+                              typeof item.percentage_achieve === "number"
+                                ? item.percentage_achieve
+                                : 0;
+
+                            return (
+                              <tr
+                                key={targetIndex}
+                                className="border-b border-gray-100 hover:bg-gray-50 bg-white"
+                              >
+                                <td className="py-3 px-4 border-l-4 border-blue-200 w-1/4">
+                                  <div
+                                    className="font-medium break-words"
+                                    title={item.target_name || "N/A"}
+                                  >
+                                    {item.target_name || "N/A"}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 w-1/4">
+                                  <div
+                                    className="text-gray-600 break-words"
+                                    title={item.target_value || "N/A"}
+                                  >
+                                    {item.target_value || "N/A"}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 w-1/4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 h-2 bg-gray-200 rounded overflow-hidden">
+                                      <div
+                                        className="h-2 rounded transition-all duration-300"
+                                        style={{
+                                          width: `${Math.min(
+                                            achievement,
+                                            100
+                                          )}%`,
+                                          backgroundColor:
+                                            achievement > 100
+                                              ? "#22c55e"
+                                              : achievement > 50
+                                              ? "#3b82f6"
+                                              : "#f97316",
+                                        }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-semibold">
+                                      {achievement}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 w-1/4">
+                                  <span
+                                    className={`px-2 py-1 rounded text-xs font-semibold break-words ${getStatusColor(
+                                      item.status || ""
+                                    )}`}
+                                  >
+                                    {item.status || "Unknown"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">

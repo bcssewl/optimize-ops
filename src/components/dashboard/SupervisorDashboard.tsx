@@ -1,5 +1,3 @@
-import { useAuth } from "@/src/context/AuthContext";
-import { createClient } from "@/src/lib/supabase/client";
 import {
   Select,
   SelectContent,
@@ -7,6 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
+import { useAuth } from "@/src/context/AuthContext";
+import { createClient } from "@/src/lib/supabase/client";
 import {
   faCheckCircle,
   faDollarSign,
@@ -340,78 +340,104 @@ export function SupervisorDashboard() {
     },
   ];
 
-  // Generate dynamic targets list from analysis data
-  const dynamicTargets = analysisData.slice(0, 5).map((item, index) => {
-    const getStatusColor = (status: string) => {
-      if (status.toLowerCase().includes("exceeded")) {
-        return {
-          status: "Exceeded",
-          statusColor: "bg-green-100 text-green-700",
-          color: "bg-green-500",
-        };
-      } else if (
-        status.toLowerCase().includes("progress") ||
-        status.toLowerCase().includes("started")
-      ) {
-        return {
-          status: "In Progress",
-          statusColor: "bg-yellow-100 text-yellow-700",
-          color: "bg-orange-500",
-        };
-      } else {
-        return {
-          status: "Completed",
-          statusColor: "bg-blue-100 text-blue-700",
-          color: "bg-blue-500",
-        };
-      }
-    };
+  // Generate dynamic targets list organized by recording
+  const recordingTargets = (() => {
+    if (recordings.length === 0) return [];
 
-    const statusInfo = getStatusColor(item.status || "");
-    const progressPercentage =
-      typeof item.percentage_achieve === "number"
-        ? Math.min(item.percentage_achieve, 100)
-        : 0;
+    return recordings.slice(0, 5).map((recording, recordingIndex) => {
+      const analysisArray = recording.analysis as AnalysisData[];
+      const recordingDate = new Date(recording.created_at).toLocaleDateString();
+      const recordingTime = new Date(recording.created_at).toLocaleTimeString(
+        [],
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      );
 
-    return {
-      name:
-        (item.target_name || "").length > 40
-          ? `${(item.target_name || "").substring(0, 40)}...`
-          : item.target_name || "N/A",
-      icon: (
-        <FontAwesomeIcon
-          icon={
-            statusInfo.status === "Exceeded"
-              ? faCheckCircle
-              : statusInfo.status === "In Progress"
-              ? faSpinner
-              : faStar
+      const targets = analysisArray.map((item, targetIndex) => {
+        const getStatusColor = (status: string) => {
+          if (status.toLowerCase().includes("exceeded")) {
+            return {
+              status: "Exceeded",
+              statusColor: "bg-green-100 text-green-700",
+              color: "bg-green-500",
+            };
+          } else if (
+            status.toLowerCase().includes("progress") ||
+            status.toLowerCase().includes("started")
+          ) {
+            return {
+              status: "In Progress",
+              statusColor: "bg-yellow-100 text-yellow-700",
+              color: "bg-orange-500",
+            };
+          } else {
+            return {
+              status: "Completed",
+              statusColor: "bg-blue-100 text-blue-700",
+              color: "bg-blue-500",
+            };
           }
-          width={20}
-          height={20}
-          className={
-            statusInfo.status === "Exceeded"
-              ? "text-green-600"
-              : statusInfo.status === "In Progress"
-              ? "text-orange-500"
-              : "text-blue-600"
-          }
-        />
-      ),
-      current:
-        (item.ahcieved_result || "").length > 30
-          ? `${(item.ahcieved_result || "").substring(0, 30)}...`
-          : item.ahcieved_result || "N/A",
-      target:
-        (item.target_value || "").length > 30
-          ? `${(item.target_value || "").substring(0, 30)}...`
-          : item.target_value || "N/A",
-      progress: progressPercentage,
-      color: statusInfo.color,
-      status: statusInfo.status,
-      statusColor: statusInfo.statusColor,
-    };
-  });
+        };
+
+        const statusInfo = getStatusColor(item.status || "");
+        const progressPercentage =
+          typeof item.percentage_achieve === "number"
+            ? Math.min(item.percentage_achieve, 100)
+            : 0;
+
+        return {
+          name:
+            (item.target_name || "").length > 40
+              ? `${(item.target_name || "").substring(0, 40)}...`
+              : item.target_name || "N/A",
+          fullName: item.target_name || "N/A",
+          icon: (
+            <FontAwesomeIcon
+              icon={
+                statusInfo.status === "Exceeded"
+                  ? faCheckCircle
+                  : statusInfo.status === "In Progress"
+                  ? faSpinner
+                  : faStar
+              }
+              width={16}
+              height={16}
+              className={
+                statusInfo.status === "Exceeded"
+                  ? "text-green-600"
+                  : statusInfo.status === "In Progress"
+                  ? "text-orange-500"
+                  : "text-blue-600"
+              }
+            />
+          ),
+          current:
+            (item.ahcieved_result || "").length > 30
+              ? `${(item.ahcieved_result || "").substring(0, 30)}...`
+              : item.ahcieved_result || "N/A",
+          target:
+            (item.target_value || "").length > 30
+              ? `${(item.target_value || "").substring(0, 30)}...`
+              : item.target_value || "N/A",
+          fullTarget: item.target_value || "N/A",
+          progress: progressPercentage,
+          color: statusInfo.color,
+          status: statusInfo.status,
+          statusColor: statusInfo.statusColor,
+        };
+      });
+
+      return {
+        recordingId: recording.id,
+        recordingDate,
+        recordingTime,
+        recordingTitle: `Recording ${recordingIndex + 1}`,
+        targets,
+      };
+    });
+  })();
 
   if (loadingData) {
     return (
@@ -433,7 +459,9 @@ export function SupervisorDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
-          <p className="text-gray-600 mt-1">Track your targets and performance</p>
+          <p className="text-gray-600 mt-1">
+            Track your targets and performance
+          </p>
         </div>
         <Select
           value={dateFilter}
@@ -516,70 +544,123 @@ export function SupervisorDashboard() {
               Based on latest voice recordings
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 text-left">
-                  <th className="py-2 px-2 font-medium">Target Name</th>
-                  <th className="py-2 px-2 font-medium">Target Value</th>
-                  <th className="py-2 px-2 font-medium">Achievement</th>
-                  <th className="py-2 px-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dynamicTargets.map((t, index) => (
-                  <tr key={index} className="border-t border-gray-100">
-                    <td className="py-2 px-2 flex items-center gap-2 font-medium">
-                      {t.icon}
-                      <span title={analysisData[index]?.target_name}>
-                        {t.name}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2">
-                      <span title={analysisData[index]?.target_value}>
-                        {t.target}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 w-48">
-                      <div className="w-full h-2 bg-gray-200 rounded">
-                        <div
-                          className="h-2 rounded transition-all duration-300"
-                          style={{
-                            width: `${Math.min(t.progress, 100)}%`,
-                            background: t.color
-                              .replace("bg-", "")
-                              .includes("green")
-                              ? "#22c55e"
-                              : t.color.replace("bg-", "").includes("orange")
-                              ? "#f97316"
-                              : "#3b82f6",
-                          }}
-                        />
-                      </div>
-                      <span
-                        className="ml-2 font-semibold text-xs mt-1 block"
-                        style={{
-                          color: t.color.replace("bg-", "").includes("green")
-                            ? "#22c55e"
-                            : t.color.replace("bg-", "").includes("orange")
-                            ? "#f97316"
-                            : "#3b82f6",
-                        }}
-                      >
-                        {t.progress}%
-                      </span>
-                    </td>
-                    <td className="py-2 px-2">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-semibold ${t.statusColor}`}
-                      >
-                        {t.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-6">
+            {recordingTargets.map((recording, recordingIndex) => (
+              <div
+                key={recording.recordingId}
+                className="border rounded-lg p-4 bg-gray-50"
+              >
+                {/* Recording Header */}
+                <div
+                  className="flex items-center justify-between mb-3 cursor-pointer"
+                  title={`Recording ID: ${recording.recordingId} | Date: ${recording.recordingDate} ${recording.recordingTime}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      width={16}
+                      height={16}
+                      className="text-blue-600"
+                    />
+                    <span className="font-medium text-gray-800">
+                      {recording.recordingTitle}
+                    </span>
+                    <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                      {recording.recordingDate} {recording.recordingTime}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {recording.targets.length} target
+                    {recording.targets.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Targets Table for this Recording */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm table-fixed">
+                    <thead>
+                      <tr className="text-gray-500 text-left">
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Target Name
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Target Value
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Achievement
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recording.targets.map((target, targetIndex) => (
+                        <tr
+                          key={targetIndex}
+                          className="border-t border-gray-200 bg-white"
+                        >
+                          <td className="py-3 px-2 border-l-4 border-blue-200 w-1/4">
+                            <div className="flex items-center gap-2 font-medium break-words">
+                              {target.icon}
+                              <span title={target.fullName}>{target.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-2   w-1/4">
+                            <span
+                              title={target.fullTarget}
+                              className="text-gray-700 break-words"
+                            >
+                              {target.target}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 w-1/4">
+                            <div className="w-full h-2 bg-gray-200 rounded">
+                              <div
+                                className="h-2 rounded transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(target.progress, 100)}%`,
+                                  background: target.color
+                                    .replace("bg-", "")
+                                    .includes("green")
+                                    ? "#22c55e"
+                                    : target.color
+                                        .replace("bg-", "")
+                                        .includes("orange")
+                                    ? "#f97316"
+                                    : "#3b82f6",
+                                }}
+                              />
+                            </div>
+                            <span
+                              className="ml-2 font-semibold text-xs mt-1 block"
+                              style={{
+                                color: target.color
+                                  .replace("bg-", "")
+                                  .includes("green")
+                                  ? "#22c55e"
+                                  : target.color
+                                      .replace("bg-", "")
+                                      .includes("orange")
+                                  ? "#f97316"
+                                  : "#3b82f6",
+                              }}
+                            >
+                              {target.progress}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 w-1/4">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-semibold break-words ${target.statusColor}`}
+                            >
+                              {target.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
@@ -593,30 +674,34 @@ export function SupervisorDashboard() {
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm table-fixed">
               <thead>
                 <tr className="text-gray-500 text-left">
-                  <th className="py-2 px-2 font-medium">Target Name</th>
-                  <th className="py-2 px-2 font-medium">Target Value</th>
-                  <th className="py-2 px-2 font-medium">Status</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Target Name</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Target Value</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {targets.length > 0 ? (
                   targets.map((t) => (
                     <tr key={t.id} className="border-t border-gray-100">
-                      <td className="py-2 px-2 flex items-center gap-2 font-medium">
-                        <FontAwesomeIcon
-                          icon={faStar}
-                          width={20}
-                          height={20}
-                          className="text-gray-400"
-                        />
-                        {t.target_name}
+                      <td className="py-2 px-2 w-1/3">
+                        <div className="flex items-center gap-2 font-medium break-words">
+                          <FontAwesomeIcon
+                            icon={faStar}
+                            width={20}
+                            height={20}
+                            className="text-gray-400 flex-shrink-0"
+                          />
+                          <span>{t.target_name}</span>
+                        </div>
                       </td>
-                      <td className="py-2 px-2">{t.target_value}</td>
-                      <td className="py-2 px-2">
-                        <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700">
+                      <td className="py-2 px-2 w-1/3">
+                        <span className="break-words">{t.target_value}</span>
+                      </td>
+                      <td className="py-2 px-2 w-1/3">
+                        <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700 break-words">
                           Pending Analysis
                         </span>
                       </td>
