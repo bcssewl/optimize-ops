@@ -577,13 +577,19 @@ export function SupervisorDashboard() {
 
                 {/* Targets Table for this Recording */}
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
+                  <table className="min-w-full text-sm table-fixed">
                     <thead>
                       <tr className="text-gray-500 text-left">
-                        <th className="py-2 px-2 font-medium">Target Name</th>
-                        <th className="py-2 px-2 font-medium">Target Value</th>
-                        <th className="py-2 px-2 font-medium">Achievement</th>
-                        <th className="py-2 px-2 font-medium">Status</th>
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Target Name
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Target Value
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">
+                          Achievement
+                        </th>
+                        <th className="py-2 px-2 font-medium w-1/4">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -592,21 +598,21 @@ export function SupervisorDashboard() {
                           key={targetIndex}
                           className="border-t border-gray-200 bg-white"
                         >
-                          <td className="py-3 px-2 border-l-4 border-blue-200">
-                            <div className="flex items-center gap-2 font-medium">
+                          <td className="py-3 px-2 border-l-4 border-blue-200 w-1/4">
+                            <div className="flex items-center gap-2 font-medium break-words">
                               {target.icon}
                               <span title={target.fullName}>{target.name}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-2 border-l-4 border-blue-200">
+                          <td className="py-3 px-2   w-1/4">
                             <span
                               title={target.fullTarget}
-                              className="text-gray-700"
+                              className="text-gray-700 break-words"
                             >
                               {target.target}
                             </span>
                           </td>
-                          <td className="py-3 px-2 w-48">
+                          <td className="py-3 px-2 w-1/4">
                             <div className="w-full h-2 bg-gray-200 rounded">
                               <div
                                 className="h-2 rounded transition-all duration-300"
@@ -641,9 +647,9 @@ export function SupervisorDashboard() {
                               {target.progress}%
                             </span>
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 w-1/4">
                             <span
-                              className={`px-2 py-1 rounded text-xs font-semibold ${target.statusColor}`}
+                              className={`px-2 py-1 rounded text-xs font-semibold break-words ${target.statusColor}`}
                             >
                               {target.status}
                             </span>
@@ -668,30 +674,34 @@ export function SupervisorDashboard() {
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm table-fixed">
               <thead>
                 <tr className="text-gray-500 text-left">
-                  <th className="py-2 px-2 font-medium">Target Name</th>
-                  <th className="py-2 px-2 font-medium">Target Value</th>
-                  <th className="py-2 px-2 font-medium">Status</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Target Name</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Target Value</th>
+                  <th className="py-2 px-2 font-medium w-1/3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {targets.length > 0 ? (
                   targets.map((t) => (
                     <tr key={t.id} className="border-t border-gray-100">
-                      <td className="py-2 px-2 flex items-center gap-2 font-medium">
-                        <FontAwesomeIcon
-                          icon={faStar}
-                          width={20}
-                          height={20}
-                          className="text-gray-400"
-                        />
-                        {t.target_name}
+                      <td className="py-2 px-2 w-1/3">
+                        <div className="flex items-center gap-2 font-medium break-words">
+                          <FontAwesomeIcon
+                            icon={faStar}
+                            width={20}
+                            height={20}
+                            className="text-gray-400 flex-shrink-0"
+                          />
+                          <span>{t.target_name}</span>
+                        </div>
                       </td>
-                      <td className="py-2 px-2">{t.target_value}</td>
-                      <td className="py-2 px-2">
-                        <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700">
+                      <td className="py-2 px-2 w-1/3">
+                        <span className="break-words">{t.target_value}</span>
+                      </td>
+                      <td className="py-2 px-2 w-1/3">
+                        <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700 break-words">
                           Pending Analysis
                         </span>
                       </td>

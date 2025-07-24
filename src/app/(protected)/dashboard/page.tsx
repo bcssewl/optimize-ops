@@ -435,19 +435,21 @@ export default function DashboardPage() {
 
                     {/* Targets Table for this Recording */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-sm table-fixed">
                         <thead>
                           <tr className="text-left text-gray-500 border-b">
-                            <th className="py-3 px-4 font-medium">
+                            <th className="py-3 px-4 font-medium w-1/4">
                               Target Name
                             </th>
-                            <th className="py-3 px-4 font-medium">
+                            <th className="py-3 px-4 font-medium w-1/4">
                               Target Value
                             </th>
-                            <th className="py-3 px-4 font-medium">
+                            <th className="py-3 px-4 font-medium w-1/4">
                               Achievement
                             </th>
-                            <th className="py-3 px-4 font-medium">Status</th>
+                            <th className="py-3 px-4 font-medium w-1/4">
+                              Status
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -475,33 +477,23 @@ export default function DashboardPage() {
                                 key={targetIndex}
                                 className="border-b border-gray-100 hover:bg-gray-50 bg-white"
                               >
-                                <td className="py-3 px-4 border-l-4 border-blue-200">
+                                <td className="py-3 px-4 border-l-4 border-blue-200 w-1/4">
                                   <div
-                                    className="font-medium"
+                                    className="font-medium break-words"
                                     title={item.target_name || "N/A"}
                                   >
-                                    {(item.target_name || "").length > 50
-                                      ? `${(item.target_name || "").substring(
-                                          0,
-                                          50
-                                        )}...`
-                                      : item.target_name || "N/A"}
+                                    {item.target_name || "N/A"}
                                   </div>
                                 </td>
-                                <td className="py-3 px-4 border-l-4 border-blue-200">
+                                <td className="py-3 px-4 w-1/4">
                                   <div
-                                    className="text-gray-600"
+                                    className="text-gray-600 break-words"
                                     title={item.target_value || "N/A"}
                                   >
-                                    {(item.target_value || "").length > 30
-                                      ? `${(item.target_value || "").substring(
-                                          0,
-                                          30
-                                        )}...`
-                                      : item.target_value || "N/A"}
+                                    {item.target_value || "N/A"}
                                   </div>
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 w-1/4">
                                   <div className="flex items-center gap-2">
                                     <div className="w-16 h-2 bg-gray-200 rounded overflow-hidden">
                                       <div
@@ -525,18 +517,13 @@ export default function DashboardPage() {
                                     </span>
                                   </div>
                                 </td>
-                                <td className="py-3 px-4 whitespace-nowrap">
+                                <td className="py-3 px-4 w-1/4">
                                   <span
-                                    className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
+                                    className={`px-2 py-1 rounded text-xs font-semibold break-words ${getStatusColor(
                                       item.status || ""
                                     )}`}
                                   >
-                                    {(item.status || "").length > 20
-                                      ? `${(item.status || "").substring(
-                                          0,
-                                          20
-                                        )}...`
-                                      : item.status || "Unknown"}
+                                    {item.status || "Unknown"}
                                   </span>
                                 </td>
                               </tr>
