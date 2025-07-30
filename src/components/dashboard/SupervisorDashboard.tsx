@@ -35,6 +35,7 @@ interface Target {
   target_value: string;
   user_uuid: string;
   created_at: string;
+  isAnalyzed?: boolean;
   analysis?: AnalysisData[];
 }
 
@@ -217,9 +218,14 @@ export function SupervisorDashboard() {
         .order("created_at", { ascending: false });
 
       if (dateRange) {
+        console.log(
+          `Applying date filter: ${dateRange.start} to ${dateRange.end}`
+        );
         targetsQuery = targetsQuery
           .gte("date", dateRange.start)
           .lte("date", dateRange.end);
+      } else {
+        console.log("No date filter applied - showing all targets");
       }
 
       // Fetch user's recordings with analysis and date filtering
@@ -241,6 +247,9 @@ export function SupervisorDashboard() {
       const [{ data: targetsData }, { data: recordingsData }] =
         await Promise.all([targetsQuery, recordingsQuery]);
 
+      console.log(
+        `Fetched ${targetsData?.length || 0} targets for ${dateFilter} filter`
+      );
       setTargets(targetsData || []);
       setRecordings(recordingsData || []);
 
@@ -534,7 +543,27 @@ export function SupervisorDashboard() {
       </div>
       <div className="bg-white rounded-xl shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <div className="font-semibold text-lg">My Targets</div>
+          <div className="font-semibold text-lg">
+            My Targets
+            {dateFilter !== "alltime" && (
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                (
+                {dateFilter === "today"
+                  ? "Today"
+                  : dateFilter === "yesterday"
+                  ? "Yesterday"
+                  : dateFilter === "last7days"
+                  ? "Last 7 Days"
+                  : dateFilter === "last30days"
+                  ? "Last 30 Days"
+                  : "All Time"}
+                )
+              </span>
+            )}
+          </div>
+          <div className="text-blue-600 bg-blue-50 rounded-full px-3 py-1 text-sm font-medium">
+            {targets.length} Targets
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm table-fixed">
@@ -558,8 +587,14 @@ export function SupervisorDashboard() {
                       <span className="break-words">{t.target_value}</span>
                     </td>
                     <td className="py-2 px-2 w-1/3">
-                      <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700 break-words">
-                        Pending Analysis
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold break-words ${
+                          t.isAnalyzed
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {t.isAnalyzed ? "✓ Analyzed" : "Pending Analysis"}
                       </span>
                     </td>
                   </tr>
