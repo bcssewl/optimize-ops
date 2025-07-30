@@ -48,6 +48,7 @@ interface Target {
   target_value: string;
   date?: string;
   created_at?: string;
+  isAnalyzed?: boolean;
 }
 
 interface AddTargetFormValues {
@@ -123,7 +124,9 @@ export default function TargetsPage() {
         supabase.from("users").select("id, email, uuid, role, department_id"),
         supabase
           .from("targets")
-          .select("id, user_uuid, target_name, target_value, date, created_at"),
+          .select(
+            "id, user_uuid, target_name, target_value, date, created_at, isAnalyzed"
+          ),
         supabase.from("departments").select("id, title"),
       ]);
       if (usersError) toast.error("Failed to fetch users");
@@ -154,7 +157,9 @@ export default function TargetsPage() {
       form.reset();
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, date, created_at");
+        .select(
+          "id, user_uuid, target_name, target_value, date, created_at, isAnalyzed"
+        );
       setTargets(targetsData || []);
     }
   };
@@ -176,7 +181,9 @@ export default function TargetsPage() {
       editForm.reset();
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, date, created_at");
+        .select(
+          "id, user_uuid, target_name, target_value, date, created_at, isAnalyzed"
+        );
       setTargets(targetsData || []);
     }
   };
@@ -193,7 +200,9 @@ export default function TargetsPage() {
       toast.success("Target deleted successfully");
       const { data: targetsData } = await supabase
         .from("targets")
-        .select("id, user_uuid, target_name, target_value, date, created_at");
+        .select(
+          "id, user_uuid, target_name, target_value, date, created_at, isAnalyzed"
+        );
       setTargets(targetsData || []);
     }
     setDeletingTargetId(null);
@@ -486,39 +495,51 @@ export default function TargetsPage() {
                                           </TableCell>
                                           <TableCell>
                                             <div className="flex gap-1">
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="text-blue-600 border-blue-200 text-xs px-2 py-1"
-                                                onClick={() =>
-                                                  openEditModal(target)
-                                                }
-                                              >
-                                                <FontAwesomeIcon
-                                                  icon={faEdit}
-                                                  className="mr-1"
-                                                />
-                                                Edit
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="text-red-600 border-red-200 text-xs px-2 py-1"
-                                                onClick={() =>
-                                                  handleDeleteTarget(target.id)
-                                                }
-                                                disabled={
-                                                  deletingTargetId === target.id
-                                                }
-                                              >
-                                                <FontAwesomeIcon
-                                                  icon={faTrash}
-                                                  className="mr-1"
-                                                />
-                                                {deletingTargetId === target.id
-                                                  ? "..."
-                                                  : "Delete"}
-                                              </Button>
+                                              {!target.isAnalyzed ? (
+                                                <>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-blue-600 border-blue-200 text-xs px-2 py-1"
+                                                    onClick={() =>
+                                                      openEditModal(target)
+                                                    }
+                                                  >
+                                                    <FontAwesomeIcon
+                                                      icon={faEdit}
+                                                      className="mr-1"
+                                                    />
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-red-600 border-red-200 text-xs px-2 py-1"
+                                                    onClick={() =>
+                                                      handleDeleteTarget(
+                                                        target.id
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      deletingTargetId ===
+                                                      target.id
+                                                    }
+                                                  >
+                                                    <FontAwesomeIcon
+                                                      icon={faTrash}
+                                                      className="mr-1"
+                                                    />
+                                                    {deletingTargetId ===
+                                                    target.id
+                                                      ? "..."
+                                                      : "Delete"}
+                                                  </Button>
+                                                </>
+                                              ) : (
+                                                <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                                  Already Analyzed
+                                                </span>
+                                              )}
                                             </div>
                                           </TableCell>
                                         </TableRow>
