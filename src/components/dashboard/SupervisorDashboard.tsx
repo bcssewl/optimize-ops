@@ -690,7 +690,7 @@ export function SupervisorDashboard() {
                           </td>
                           <td className="py-3 px-2 w-1/4">
                             <div className="flex items-center gap-2">
-                              <div className="w-full h-2 bg-gray-200 rounded">
+                              <div className="w-20 h-2 bg-gray-200 rounded flex-shrink-0">
                                 <div
                                   className="h-2 rounded transition-all duration-300"
                                   style={{
@@ -712,7 +712,7 @@ export function SupervisorDashboard() {
                                 />
                               </div>
 
-                              <span className="text-xs font-semibold">
+                              <span className="text-xs font-semibold min-w-[32px] text-right">
                                 {target.progress}%
                               </span>
                             </div>
