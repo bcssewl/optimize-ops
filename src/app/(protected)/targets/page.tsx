@@ -36,6 +36,7 @@ import * as yup from "yup";
 interface User {
   id: number;
   email: string;
+  full_name?: string;
   uuid: string;
   role?: string;
   department_id?: number;
@@ -121,7 +122,9 @@ export default function TargetsPage() {
         { data: targetsData, error: targetsError },
         { data: departmentsData, error: departmentsError },
       ] = await Promise.all([
-        supabase.from("users").select("id, email, uuid, role, department_id"),
+        supabase
+          .from("users")
+          .select("id, email, full_name, uuid, role, department_id"),
         supabase
           .from("targets")
           .select(
@@ -132,6 +135,7 @@ export default function TargetsPage() {
       if (usersError) toast.error("Failed to fetch users");
       if (targetsError) toast.error("Failed to fetch targets");
       if (departmentsError) toast.error("Failed to fetch departments");
+      console.log("*** UsersData:", usersData);
       setUsers(usersData || []);
       setTargets(targetsData || []);
       setDepartments(departmentsData || []);
@@ -242,6 +246,7 @@ export default function TargetsPage() {
     }
   };
 
+  console.log("*** Users:", users);
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
       <div className="flex justify-between items-center mb-8">
@@ -287,8 +292,13 @@ export default function TargetsPage() {
                         <div className="flex items-center gap-3">
                           {/* Optionally add avatar here */}
                           <div>
-                            <div className="font-medium">{user.email}</div>
-                            <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
+                            <div className="font-medium">
+                              {user.full_name || user.email}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.email}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex flex-col gap-0.5 mt-1">
                               {(() => {
                                 const dept = departments.find(
                                   (d) => d.id === user.department_id
@@ -348,8 +358,13 @@ export default function TargetsPage() {
                               <DialogTitle>Add Today's Target</DialogTitle>
                             </DialogHeader>
                             <div className="mb-4 flex flex-col gap-1">
-                              <div className="font-medium">{user.email}</div>
-                              <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
+                              <div className="font-medium">
+                                {user.full_name || user.email}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {user.email}
+                              </div>
+                              <div className="text-xs text-muted-foreground flex flex-col gap-0.5 mt-1">
                                 {(() => {
                                   const dept = departments.find(
                                     (d) => d.id === user.department_id
@@ -430,7 +445,10 @@ export default function TargetsPage() {
                           <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
                             <DialogHeader className="flex-shrink-0">
                               <DialogTitle>
-                                Targets for {user.email}
+                                Targets for{" "}
+                                {user.full_name
+                                  ? `${user.full_name} (${user.email})`
+                                  : user.email}
                               </DialogTitle>
                             </DialogHeader>
                             {viewUserTargets.length === 0 ? (
