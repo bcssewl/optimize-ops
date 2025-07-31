@@ -48,10 +48,18 @@ const GooglePrebuiltButton = ({
 
           // Only insert if user doesn't exist (preserve existing user's role)
           if (!existingUser) {
+            // Extract full name from Google user metadata
+            const fullName =
+              data.user.user_metadata?.full_name ||
+              data.user.user_metadata?.name ||
+              data.user.email?.split("@")[0] ||
+              "Google User";
+
             await supabase.from("users").insert([
               {
                 uuid: data.user.id,
                 email: data.user.email,
+                full_name: fullName,
                 created_at: new Date().toISOString(),
                 role: "supervisor", // Default role for new users only
                 // organization_id: null, // Set if you have org logic
