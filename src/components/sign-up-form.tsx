@@ -22,6 +22,7 @@ export function SignUpForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export function SignUpForm({
           {
             uuid: data.user.id,
             email: data.user.email,
+            full_name: fullName,
             created_at: new Date().toISOString(),
             role: "supervisor", // Default role, adjust as needed
             // department_id: null, // Optionally set
@@ -94,6 +96,17 @@ export function SignUpForm({
             </div>
             <form onSubmit={handleSignUp}>
               <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input

@@ -392,7 +392,7 @@ export function SupervisorDashboard() {
         const statusInfo = getStatusColor(item.status || "");
         const progressPercentage =
           typeof item.percentage_achieve === "number"
-            ? Math.min(item.percentage_achieve, 100)
+            ? item.percentage_achieve
             : 0;
 
         return {
@@ -689,39 +689,33 @@ export function SupervisorDashboard() {
                             </span>
                           </td>
                           <td className="py-3 px-2 w-1/4">
-                            <div className="w-full h-2 bg-gray-200 rounded">
-                              <div
-                                className="h-2 rounded transition-all duration-300"
-                                style={{
-                                  width: `${Math.min(target.progress, 100)}%`,
-                                  background: target.color
-                                    .replace("bg-", "")
-                                    .includes("green")
-                                    ? "#22c55e"
-                                    : target.color
-                                        .replace("bg-", "")
-                                        .includes("orange")
-                                    ? "#f97316"
-                                    : "#3b82f6",
-                                }}
-                              />
-                            </div>
-                            <span
-                              className="ml-2 font-semibold text-xs mt-1 block"
-                              style={{
-                                color: target.color
-                                  .replace("bg-", "")
-                                  .includes("green")
-                                  ? "#22c55e"
-                                  : target.color
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 h-2 bg-gray-200 rounded flex-shrink-0">
+                                <div
+                                  className="h-2 rounded transition-all duration-300"
+                                  style={{
+                                    width: `${Math.min(target.progress, 100)}%`,
+                                    background: target.color
                                       .replace("bg-", "")
-                                      .includes("orange")
-                                  ? "#f97316"
-                                  : "#3b82f6",
-                              }}
-                            >
-                              {target.progress}%
-                            </span>
+                                      .includes("green")
+                                      ? "#22c55e"
+                                      : target.color
+                                          .replace("bg-", "")
+                                          .includes("orange")
+                                      ? "#f97316"
+                                      : target.progress > 100
+                                      ? "#22c55e"
+                                      : target.progress > 50
+                                      ? "#3b82f6"
+                                      : "#f97316",
+                                  }}
+                                />
+                              </div>
+
+                              <span className="text-xs font-semibold min-w-[32px] text-right">
+                                {target.progress}%
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3 px-2 w-1/4">
                             <span

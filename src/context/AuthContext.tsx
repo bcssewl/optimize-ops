@@ -12,6 +12,7 @@ import {
 interface AuthUser {
   id: string;
   email: string;
+  full_name?: string;
   role?: "admin" | "supervisor" | "manager" | "staff";
 }
 
@@ -46,12 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: userData } = await supabase.auth.getUser();
 
       if (!mounted) return;
-
+      console.log("*** User data fetched:", userData);
       if (userData?.user) {
         // Fetch user role from users table
         const { data: userRow } = await supabase
           .from("users")
-          .select("id, email, role")
+          .select("id, email, full_name, role")
           .eq("uuid", userData.user.id)
           .single();
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           id: userData.user.id,
           email: userData.user.email || "",
+          full_name: userRow?.full_name || "",
           role: userRow?.role || undefined,
         });
       } else {
@@ -96,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       listener?.subscription.unsubscribe();
     };
   }, []); // Remove user dependency to prevent infinite loop
-
+  console.log("*** Fetching user data", user ? user.id : "No user");
   return (
     <AuthContext.Provider value={{ user, loading }}>
       {children}

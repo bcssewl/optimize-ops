@@ -293,6 +293,8 @@ export default function UploadRecordPage() {
       // Save metadata to database
       const { error: dbError } = await supabase.from("recordings").insert({
         user_uuid: user.id,
+        full_name: user.full_name || user.email || "Unknown User",
+        email: user.email || "",
         file_name: `${user.id}-x-${timestamp}.${fileExtension}`,
         file_path: uniqueFileName,
         file_type: finalMimeType,
@@ -424,6 +426,8 @@ export default function UploadRecordPage() {
       // Insert into database using the same schema as recording function
       const { error: dbError } = await supabase.from("recordings").insert({
         user_uuid: user.id,
+        full_name: user.full_name || user.email || "Unknown User",
+        email: user.email || "",
         file_name: `${user.id}-x-${timestamp}.${fileExtension}`,
         file_path: uniqueFileName,
         file_type: uploadedFile.type || `audio/${fileExtension}`,

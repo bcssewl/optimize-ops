@@ -33,6 +33,8 @@ interface AnalysisData {
 interface Recording {
   id: number;
   user_uuid: string;
+  full_name?: string;
+  email?: string;
   analysis?: AnalysisData[];
   status: string;
   created_at: string;
@@ -107,7 +109,9 @@ export default function DashboardPage() {
         // Build queries with date filtering
         let recordingsQuery = supabase
           .from("recordings")
-          .select("id, analysis, status, created_at, user_uuid")
+          .select(
+            "id, analysis, status, created_at, user_uuid, full_name, email"
+          )
           .eq("status", "success")
           .not("analysis", "is", null)
           .order("created_at", { ascending: false });
@@ -411,7 +415,11 @@ export default function DashboardPage() {
                     {/* Recording Header */}
                     <div
                       className="flex items-center justify-between mb-3 cursor-pointer"
-                      title={`Recording ID: ${recording.id} | Date: ${recordingDate} ${recordingTime}`}
+                      title={`Recording ID: ${recording.id} | User: ${
+                        recording.full_name || "Unknown"
+                      } (${
+                        recording.email || "No email"
+                      }) | Date: ${recordingDate} ${recordingTime}`}
                     >
                       <div className="flex items-center gap-2">
                         <FontAwesomeIcon
@@ -423,6 +431,16 @@ export default function DashboardPage() {
                         <span className="font-medium text-gray-800">
                           Recording {recordingIndex + 1}
                         </span>
+                        {recording.full_name && (
+                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                            {recording.full_name}
+                          </span>
+                        )}
+                        {recording.email && (
+                          <span className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                            {recording.email}
+                          </span>
+                        )}
                         <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
                           {recordingDate} {recordingTime}
                         </span>
