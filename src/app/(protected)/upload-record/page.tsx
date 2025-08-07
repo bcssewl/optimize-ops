@@ -12,6 +12,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { convertToMp3, getFileExtension } from "@/src/lib/audio-utils";
 import { createClient } from "@/src/lib/supabase/client";
 import {
+  faCheckCircle,
   faMicrophone,
   faPause,
   faPlay,
@@ -34,6 +35,8 @@ interface RecordingState {
   isPlaying: boolean;
 }
 
+type RecordingType = "achievement" | "excuse";
+
 export default function UploadRecordPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -51,11 +54,27 @@ export default function UploadRecordPage() {
     isPlaying: false,
   });
 
+  const [excuseRecordingState, setExcuseRecordingState] =
+    useState<RecordingState>({
+      isRecording: false,
+      isPaused: false,
+      audioBlob: null,
+      audioUrl: null,
+      duration: 0,
+      isPlaying: false,
+    });
+
+  const [activeRecordingType, setActiveRecordingType] =
+    useState<RecordingType | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [convertToMp3Format, setConvertToMp3Format] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const excuseMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const excuseAudioRef = useRef<HTMLAudioElement | null>(null);
+  const excuseChunksRef = useRef<Blob[]>([]);
+  const excuseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -63,17 +82,33 @@ export default function UploadRecordPage() {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (excuseTimerRef.current) {
+        clearInterval(excuseTimerRef.current);
+      }
       if (recordingState.audioUrl) {
         URL.revokeObjectURL(recordingState.audioUrl);
       }
+      if (excuseRecordingState.audioUrl) {
+        URL.revokeObjectURL(excuseRecordingState.audioUrl);
+      }
       if (audioRef.current) {
         audioRef.current.pause();
+      }
+      if (excuseAudioRef.current) {
+        excuseAudioRef.current.pause();
       }
     };
   }, []);
 
   // Start recording
-  const startRecording = async () => {
+  const startRecording = async (type: RecordingType = "achievement") => {
+    if (activeRecordingType && activeRecordingType !== type) {
+      toast.error(
+        "Please finish the current recording before starting a new one"
+      );
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -91,22 +126,31 @@ export default function UploadRecordPage() {
           : "audio/wav",
       });
 
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+      if (type === "achievement") {
+        mediaRecorderRef.current = mediaRecorder;
+        chunksRef.current = [];
+      } else {
+        excuseMediaRecorderRef.current = mediaRecorder;
+        excuseChunksRef.current = [];
+      }
+
+      const chunks = type === "achievement" ? chunksRef : excuseChunksRef;
+      const setState =
+        type === "achievement" ? setRecordingState : setExcuseRecordingState;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+          chunks.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, {
+        const audioBlob = new Blob(chunks.current, {
           type: mediaRecorder.mimeType,
         });
         const audioUrl = URL.createObjectURL(audioBlob);
 
-        setRecordingState((prev) => ({
+        setState((prev) => ({
           ...prev,
           audioBlob,
           audioUrl,
@@ -116,26 +160,36 @@ export default function UploadRecordPage() {
 
         // Stop all tracks
         stream.getTracks().forEach((track) => track.stop());
+
+        setActiveRecordingType(null);
       };
 
       mediaRecorder.start(100); // Collect data every 100ms
 
-      setRecordingState((prev) => ({
+      setState((prev) => ({
         ...prev,
         isRecording: true,
         isPaused: false,
         duration: 0,
       }));
 
+      setActiveRecordingType(type);
+
       // Start timer
-      timerRef.current = setInterval(() => {
-        setRecordingState((prev) => ({
+      const currentTimerRef =
+        type === "achievement" ? timerRef : excuseTimerRef;
+      currentTimerRef.current = setInterval(() => {
+        setState((prev) => ({
           ...prev,
           duration: prev.duration + 1,
         }));
       }, 1000);
 
-      toast.success("Recording started!");
+      toast.success(
+        `${
+          type === "achievement" ? "Achievement" : "Problem"
+        } recording started!`
+      );
     } catch (error) {
       console.error("Error starting recording:", error);
       toast.error(
@@ -145,41 +199,63 @@ export default function UploadRecordPage() {
   };
 
   // Stop recording
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && recordingState.isRecording) {
-      mediaRecorderRef.current.stop();
+  const stopRecording = (type: RecordingType = "achievement") => {
+    const mediaRecorder =
+      type === "achievement"
+        ? mediaRecorderRef.current
+        : excuseMediaRecorderRef.current;
+    const state =
+      type === "achievement" ? recordingState : excuseRecordingState;
+    const currentTimerRef = type === "achievement" ? timerRef : excuseTimerRef;
 
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    if (mediaRecorder && state.isRecording) {
+      mediaRecorder.stop();
+
+      if (currentTimerRef.current) {
+        clearInterval(currentTimerRef.current);
+        currentTimerRef.current = null;
       }
 
-      toast.success("Recording stopped!");
+      toast.success(
+        `${
+          type === "achievement" ? "Achievement" : "Problem"
+        } recording stopped!`
+      );
     }
   };
 
   // Pause/Resume recording
-  const togglePauseRecording = () => {
-    if (mediaRecorderRef.current) {
-      if (recordingState.isPaused) {
-        mediaRecorderRef.current.resume();
-        timerRef.current = setInterval(() => {
-          setRecordingState((prev) => ({
+  const togglePauseRecording = (type: RecordingType = "achievement") => {
+    const mediaRecorder =
+      type === "achievement"
+        ? mediaRecorderRef.current
+        : excuseMediaRecorderRef.current;
+    const state =
+      type === "achievement" ? recordingState : excuseRecordingState;
+    const setState =
+      type === "achievement" ? setRecordingState : setExcuseRecordingState;
+    const currentTimerRef = type === "achievement" ? timerRef : excuseTimerRef;
+
+    if (mediaRecorder) {
+      if (state.isPaused) {
+        mediaRecorder.resume();
+        currentTimerRef.current = setInterval(() => {
+          setState((prev) => ({
             ...prev,
             duration: prev.duration + 1,
           }));
         }, 1000);
         toast.success("Recording resumed");
       } else {
-        mediaRecorderRef.current.pause();
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
+        mediaRecorder.pause();
+        if (currentTimerRef.current) {
+          clearInterval(currentTimerRef.current);
+          currentTimerRef.current = null;
         }
         toast.success("Recording paused");
       }
 
-      setRecordingState((prev) => ({
+      setState((prev) => ({
         ...prev,
         isPaused: !prev.isPaused,
       }));
@@ -187,46 +263,58 @@ export default function UploadRecordPage() {
   };
 
   // Play/pause audio preview
-  const togglePlayback = () => {
-    if (!recordingState.audioUrl) return;
+  const togglePlayback = (type: RecordingType = "achievement") => {
+    const state =
+      type === "achievement" ? recordingState : excuseRecordingState;
+    const setState =
+      type === "achievement" ? setRecordingState : setExcuseRecordingState;
+    const currentAudioRef = type === "achievement" ? audioRef : excuseAudioRef;
 
-    if (recordingState.isPlaying) {
-      audioRef.current?.pause();
+    if (!state.audioUrl) return;
+
+    if (state.isPlaying) {
+      currentAudioRef.current?.pause();
     } else {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
+      if (currentAudioRef.current) {
+        currentAudioRef.current.currentTime = 0;
       } else {
-        const audio = new Audio(recordingState.audioUrl);
-        audioRef.current = audio;
+        const audio = new Audio(state.audioUrl);
+        currentAudioRef.current = audio;
 
         audio.onended = () => {
-          setRecordingState((prev) => ({ ...prev, isPlaying: false }));
+          setState((prev) => ({ ...prev, isPlaying: false }));
         };
 
         audio.onerror = () => {
           toast.error("Failed to play audio");
-          setRecordingState((prev) => ({ ...prev, isPlaying: false }));
+          setState((prev) => ({ ...prev, isPlaying: false }));
         };
       }
 
-      audioRef.current?.play();
+      currentAudioRef.current?.play();
     }
 
-    setRecordingState((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+    setState((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
   };
 
   // Clear recording
-  const clearRecording = () => {
-    if (recordingState.audioUrl) {
-      URL.revokeObjectURL(recordingState.audioUrl);
+  const clearRecording = (type: RecordingType = "achievement") => {
+    const state =
+      type === "achievement" ? recordingState : excuseRecordingState;
+    const setState =
+      type === "achievement" ? setRecordingState : setExcuseRecordingState;
+    const currentAudioRef = type === "achievement" ? audioRef : excuseAudioRef;
+
+    if (state.audioUrl) {
+      URL.revokeObjectURL(state.audioUrl);
     }
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
     }
 
-    setRecordingState({
+    setState({
       isRecording: false,
       isPaused: false,
       audioBlob: null,
@@ -235,13 +323,18 @@ export default function UploadRecordPage() {
       isPlaying: false,
     });
 
-    toast.success("Recording cleared");
+    toast.success(
+      `${type === "achievement" ? "Achievement" : "Problem"} recording cleared`
+    );
   };
 
   // Upload recording
   const uploadRecording = async () => {
-    if (!recordingState.audioBlob || !user) {
-      toast.error("No recording to upload");
+    if (
+      (!recordingState.audioBlob && !excuseRecordingState.audioBlob) ||
+      !user
+    ) {
+      toast.error("No recordings to upload");
       return;
     }
 
@@ -249,79 +342,150 @@ export default function UploadRecordPage() {
 
     try {
       const supabase = createClient();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-      // Convert to MP3 if requested
-      let finalBlob = recordingState.audioBlob;
-      let finalMimeType = recordingState.audioBlob.type;
-      let fileExtension = getFileExtension(recordingState.audioBlob.type);
+      let achievementFileData = null;
+      let excuseFileData = null;
 
-      if (
-        convertToMp3Format &&
-        !recordingState.audioBlob.type.includes("mp3")
-      ) {
-        toast.info("Converting to MP3...");
-        try {
-          finalBlob = await convertToMp3(recordingState.audioBlob);
-          finalMimeType = "audio/mp3";
-          fileExtension = "mp3";
-        } catch (conversionError) {
-          console.warn(
-            "MP3 conversion failed, using original format:",
-            conversionError
-          );
-          toast.warning("MP3 conversion failed, uploading as WebM");
+      // Process achievement recording if available
+      if (recordingState.audioBlob) {
+        let finalBlob = recordingState.audioBlob;
+        let finalMimeType = recordingState.audioBlob.type;
+        let fileExtension = getFileExtension(recordingState.audioBlob.type);
+
+        if (
+          convertToMp3Format &&
+          !recordingState.audioBlob.type.includes("mp3")
+        ) {
+          toast.info("Converting achievement recording to MP3...");
+          try {
+            finalBlob = await convertToMp3(recordingState.audioBlob);
+            finalMimeType = "audio/mp3";
+            fileExtension = "mp3";
+          } catch (conversionError) {
+            console.warn(
+              "MP3 conversion failed, using original format:",
+              conversionError
+            );
+            toast.warning("MP3 conversion failed, uploading as WebM");
+          }
         }
+
+        const uniqueFileName = `${user.id}/${user.id}-achievement-${timestamp}.${fileExtension}`;
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("audio-recordings")
+          .upload(uniqueFileName, finalBlob, {
+            contentType: finalMimeType,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(`Achievement upload failed: ${uploadError.message}`);
+        }
+
+        achievementFileData = {
+          file_name: `${user.id}-achievement-${timestamp}.${fileExtension}`,
+          file_path: uniqueFileName,
+          file_type: finalMimeType,
+          duration: recordingState.duration,
+        };
       }
 
-      // Generate unique file name using user_uuid-timestamp format
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const uniqueFileName = `${user.id}/${user.id}-x-${timestamp}.${fileExtension}`;
+      // Process excuse recording if available
+      if (excuseRecordingState.audioBlob) {
+        let finalBlob = excuseRecordingState.audioBlob;
+        let finalMimeType = excuseRecordingState.audioBlob.type;
+        let fileExtension = getFileExtension(
+          excuseRecordingState.audioBlob.type
+        );
 
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("audio-recordings")
-        .upload(uniqueFileName, finalBlob, {
-          contentType: finalMimeType,
-          upsert: false,
-        });
+        if (
+          convertToMp3Format &&
+          !excuseRecordingState.audioBlob.type.includes("mp3")
+        ) {
+          toast.info("Converting excuse recording to MP3...");
+          try {
+            finalBlob = await convertToMp3(excuseRecordingState.audioBlob);
+            finalMimeType = "audio/mp3";
+            fileExtension = "mp3";
+          } catch (conversionError) {
+            console.warn(
+              "MP3 conversion failed, using original format:",
+              conversionError
+            );
+            toast.warning("MP3 conversion failed, uploading as WebM");
+          }
+        }
 
-      if (uploadError) {
-        console.log("Upload error:", uploadError);
-        throw new Error(`*** Upload failed: ${uploadError.message}`);
+        const uniqueFileName = `${user.id}/${user.id}-excuse-${timestamp}.${fileExtension}`;
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("audio-recordings")
+          .upload(uniqueFileName, finalBlob, {
+            contentType: finalMimeType,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(`Excuse upload failed: ${uploadError.message}`);
+        }
+
+        excuseFileData = {
+          excuse_recording_file_name: `${user.id}-excuse-${timestamp}.${fileExtension}`,
+          excuse_recording_file_path: uniqueFileName,
+          excuse_recording_file_type: finalMimeType,
+        };
       }
 
       // Save metadata to database
-      const { error: dbError } = await supabase.from("recordings").insert({
+      const insertData: any = {
         user_uuid: user.id,
         full_name: user.full_name || user.email || "Unknown User",
         email: user.email || "",
-        file_name: `${user.id}-x-${timestamp}.${fileExtension}`,
-        file_path: uniqueFileName,
-        file_type: finalMimeType,
-        duration: recordingState.duration,
         description: null,
         status: "success",
-      });
+        ...achievementFileData,
+        ...excuseFileData,
+      };
+
+      const { error: dbError } = await supabase
+        .from("recordings")
+        .insert(insertData);
 
       if (dbError) {
-        // If database insert fails, try to clean up the uploaded file
-        await supabase.storage
-          .from("audio-recordings")
-          .remove([uniqueFileName]);
+        // If database insert fails, try to clean up the uploaded files
+        if (achievementFileData) {
+          await supabase.storage
+            .from("audio-recordings")
+            .remove([achievementFileData.file_path]);
+        }
+        if (excuseFileData) {
+          await supabase.storage
+            .from("audio-recordings")
+            .remove([excuseFileData.excuse_recording_file_path]);
+        }
 
         throw new Error(`Database error: ${dbError.message}`);
       }
 
-      toast.success("Recording uploaded successfully!");
+      toast.success("Recordings uploaded successfully!");
 
-      // Clear the form and recording
-      clearRecording();
+      // Clear the form and recordings
+      if (recordingState.audioBlob) {
+        clearRecording("achievement");
+      }
+      if (excuseRecordingState.audioBlob) {
+        clearRecording("excuse");
+      }
 
       // Redirect to recordings page
       router.push("/recordings");
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error(`Failed to upload recording: ${error.message}`);
+      toast.error(`Failed to upload recordings: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -467,159 +631,34 @@ export default function UploadRecordPage() {
         <div>
           <h1 className="text-3xl font-bold">Record Audio</h1>
           <p className="text-muted-foreground">
-            Record live audio for productivity tracking
+            Record your target achievements and any problems you faced
           </p>
         </div>
 
-        {/* File Upload Section */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Upload Audio File</CardTitle>
-            <CardDescription>
-              Upload MP3 or MP4 files directly from your device
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6"> 
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                isDragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-gray-300 hover:border-gray-400"
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <div className="space-y-4">
-                <div className="text-4xl">📁</div>
-                <div>
-                  <p className="text-lg font-medium">
-                    {isDragOver
-                      ? "Drop your file here"
-                      : "Drag and drop your audio file"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    or click below to browse files
-                  </p>
-                </div>
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  <FontAwesomeIcon
-                    icon={faUpload}
-                    width={16}
-                    height={16}
-                    className="mr-2"
-                  />
-                  Choose File
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".mp3,.mp4,.m4a,.mpeg,audio/mp3,audio/mpeg,audio/mp4,video/mp4"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
- 
-            {uploadedFile && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{uploadedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB •{" "}
-                      {uploadedFile.type || "audio/mp3"}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={clearUploadedFile}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <FontAwesomeIcon
-                      icon={faTrash}
-                      width={14}
-                      height={14}
-                      className="mr-1"
-                    />
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            )}
- 
-            {uploadedFile && (
-              <Button
-                onClick={uploadFile}
-                disabled={isUploading}
-                size="lg"
-                className="w-full"
-              >
-                {isUploading ? (
-                  <>
-                    <FontAwesomeIcon
-                      icon={faSpinner}
-                      width={20}
-                      height={20}
-                      className="mr-2 animate-spin"
-                    />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <FontAwesomeIcon
-                      icon={faUpload}
-                      width={20}
-                      height={20}
-                      className="mr-2"
-                    />
-                    Upload File
-                  </>
-                )}
-              </Button>
-            )}
-
-            <div className="text-xs text-muted-foreground text-center">
-              Supported formats: MP3, MP4 • Maximum size: 50MB
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* Divider */}
-        {/* <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or record live audio
-            </span>
-          </div>
-        </div> */}
-
-        {/* Recording Controls */}
+        {/* Achievement Recording Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Voice Recording</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">
+                Required
+              </span>
+              Achievement Recording
+            </CardTitle>
             <CardDescription>
-              Click the microphone to start recording your voice
+              Record your daily target achievements and progress updates
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Recording Status */}
             <div className="text-center">
-              <div className="text-4xl font-mono font-bold text-primary">
+              <div className="text-4xl font-mono font-bold text-green-600">
                 {formatDuration(recordingState.duration)}
               </div>
               {recordingState.isRecording && (
                 <div className="text-sm text-muted-foreground mt-2">
                   {recordingState.isPaused
-                    ? "Recording paused"
-                    : "Recording in progress..."}
+                    ? "Achievement recording paused"
+                    : "Recording achievements..."}
                 </div>
               )}
             </div>
@@ -628,9 +667,10 @@ export default function UploadRecordPage() {
             <div className="flex justify-center space-x-4">
               {!recordingState.isRecording && !recordingState.audioBlob && (
                 <Button
-                  onClick={startRecording}
+                  onClick={() => startRecording("achievement")}
                   size="lg"
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={activeRecordingType === "excuse"}
                 >
                   <FontAwesomeIcon
                     icon={faMicrophone}
@@ -638,14 +678,14 @@ export default function UploadRecordPage() {
                     height={20}
                     className="mr-2"
                   />
-                  Start Recording
+                  Start Achievement Recording
                 </Button>
               )}
 
               {recordingState.isRecording && (
                 <>
                   <Button
-                    onClick={togglePauseRecording}
+                    onClick={() => togglePauseRecording("achievement")}
                     variant="outline"
                     size="lg"
                   >
@@ -659,7 +699,7 @@ export default function UploadRecordPage() {
                   </Button>
 
                   <Button
-                    onClick={stopRecording}
+                    onClick={() => stopRecording("achievement")}
                     variant="destructive"
                     size="lg"
                   >
@@ -676,7 +716,11 @@ export default function UploadRecordPage() {
 
               {recordingState.audioBlob && (
                 <>
-                  <Button onClick={togglePlayback} variant="outline" size="lg">
+                  <Button
+                    onClick={() => togglePlayback("achievement")}
+                    variant="outline"
+                    size="lg"
+                  >
                     <FontAwesomeIcon
                       icon={recordingState.isPlaying ? faPause : faPlay}
                       width={20}
@@ -686,7 +730,127 @@ export default function UploadRecordPage() {
                     {recordingState.isPlaying ? "Pause" : "Play"}
                   </Button>
 
-                  <Button onClick={clearRecording} variant="outline" size="lg">
+                  <Button
+                    onClick={() => clearRecording("achievement")}
+                    variant="outline"
+                    size="lg"
+                  >
+                    <FontAwesomeIcon
+                      icon={faTrash}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    Clear
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Problem/Excuse Recording Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-sm font-medium">
+                Optional
+              </span>
+              Problem Recording
+            </CardTitle>
+            <CardDescription>
+              Record any challenges, problems, or reasons that affected your
+              target achievements (optional)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Recording Status */}
+            <div className="text-center">
+              <div className="text-4xl font-mono font-bold text-orange-600">
+                {formatDuration(excuseRecordingState.duration)}
+              </div>
+              {excuseRecordingState.isRecording && (
+                <div className="text-sm text-muted-foreground mt-2">
+                  {excuseRecordingState.isPaused
+                    ? "Problem recording paused"
+                    : "Recording problems..."}
+                </div>
+              )}
+            </div>
+
+            {/* Recording Controls */}
+            <div className="flex justify-center space-x-4">
+              {!excuseRecordingState.isRecording &&
+                !excuseRecordingState.audioBlob && (
+                  <Button
+                    onClick={() => startRecording("excuse")}
+                    size="lg"
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    disabled={activeRecordingType === "achievement"}
+                  >
+                    <FontAwesomeIcon
+                      icon={faMicrophone}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    Start Problem Recording
+                  </Button>
+                )}
+
+              {excuseRecordingState.isRecording && (
+                <>
+                  <Button
+                    onClick={() => togglePauseRecording("excuse")}
+                    variant="outline"
+                    size="lg"
+                  >
+                    <FontAwesomeIcon
+                      icon={excuseRecordingState.isPaused ? faPlay : faPause}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    {excuseRecordingState.isPaused ? "Resume" : "Pause"}
+                  </Button>
+
+                  <Button
+                    onClick={() => stopRecording("excuse")}
+                    variant="destructive"
+                    size="lg"
+                  >
+                    <FontAwesomeIcon
+                      icon={faStop}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    Stop Recording
+                  </Button>
+                </>
+              )}
+
+              {excuseRecordingState.audioBlob && (
+                <>
+                  <Button
+                    onClick={() => togglePlayback("excuse")}
+                    variant="outline"
+                    size="lg"
+                  >
+                    <FontAwesomeIcon
+                      icon={excuseRecordingState.isPlaying ? faPause : faPlay}
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    {excuseRecordingState.isPlaying ? "Pause" : "Play"}
+                  </Button>
+
+                  <Button
+                    onClick={() => clearRecording("excuse")}
+                    variant="outline"
+                    size="lg"
+                  >
                     <FontAwesomeIcon
                       icon={faTrash}
                       width={20}
@@ -702,19 +866,100 @@ export default function UploadRecordPage() {
         </Card>
 
         {/* Upload Form */}
-        {recordingState.audioBlob && (
+        {(recordingState.audioBlob || excuseRecordingState.audioBlob) && (
           <Card>
             <CardHeader>
-              <CardTitle>Upload Recording</CardTitle>
+              <CardTitle>Upload Recordings</CardTitle>
               <CardDescription>
-                Upload your recorded audio (automatically named with timestamp)
+                Upload your recorded audio files for analysis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Show which recordings are ready */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div
+                  className={`p-3 rounded-lg border ${
+                    recordingState.audioBlob
+                      ? "bg-green-50 border-green-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon
+                      icon={
+                        recordingState.audioBlob ? faCheckCircle : faSpinner
+                      }
+                      className={
+                        recordingState.audioBlob
+                          ? "text-green-600"
+                          : "text-gray-400"
+                      }
+                      width={16}
+                      height={16}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        recordingState.audioBlob
+                          ? "text-green-700"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Achievement Recording
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {recordingState.audioBlob
+                      ? `Ready (${formatDuration(recordingState.duration)})`
+                      : "Not recorded yet"}
+                  </p>
+                </div>
+
+                <div
+                  className={`p-3 rounded-lg border ${
+                    excuseRecordingState.audioBlob
+                      ? "bg-orange-50 border-orange-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon
+                      icon={
+                        excuseRecordingState.audioBlob
+                          ? faCheckCircle
+                          : faSpinner
+                      }
+                      className={
+                        excuseRecordingState.audioBlob
+                          ? "text-orange-600"
+                          : "text-gray-400"
+                      }
+                      width={16}
+                      height={16}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        excuseRecordingState.audioBlob
+                          ? "text-orange-700"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Problem Recording
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {excuseRecordingState.audioBlob
+                      ? `Ready (${formatDuration(
+                          excuseRecordingState.duration
+                        )})`
+                      : "Optional - not recorded"}
+                  </p>
+                </div>
+              </div>
+
               <div className="pt-4">
                 <Button
                   onClick={uploadRecording}
-                  disabled={isUploading}
+                  disabled={isUploading || !recordingState.audioBlob}
                   size="lg"
                   className="w-full"
                 >
@@ -736,10 +981,15 @@ export default function UploadRecordPage() {
                         height={20}
                         className="mr-2"
                       />
-                      Upload Recording
+                      Upload Recordings
                     </>
                   )}
                 </Button>
+                {!recordingState.audioBlob && (
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Achievement recording is required before uploading
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -752,29 +1002,35 @@ export default function UploadRecordPage() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-6">
-              {/* <div>
-                <h4 className="font-medium mb-2">File Upload</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Upload MP3 or MP4 files directly</li>
-                  <li>• Drag and drop files or use the file picker</li>
-                  <li>• Maximum file size: 50MB</li>
-                  <li>• Files are automatically processed after upload</li>
-                </ul>
-              </div> */}
               <div>
-                <h4 className="font-medium mb-2">Live Recording</h4>
+                <h4 className="font-medium mb-2 text-green-700">
+                  Achievement Recording (Required)
+                </h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Make sure your microphone is connected</li>
-                  <li>• Speak clearly and at a normal volume</li>
-                  <li>• You can pause and resume recording</li>
-                  <li>• Preview your recording before uploading</li>
+                  <li>• Share your daily target achievements</li>
+                  <li>• Mention specific progress and results</li>
+                  <li>• Include quantifiable metrics if possible</li>
+                  <li>• Speak clearly and at normal volume</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2 text-orange-700">
+                  Problem Recording (Optional)
+                </h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Explain any challenges you faced</li>
+                  <li>• Mention external factors affecting performance</li>
+                  <li>• Describe obstacles or resource constraints</li>
+                  <li>• This helps provide context for analysis</li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-blue-50 rounded-md">
               <p className="text-sm text-blue-700">
-                <strong>Note:</strong> All recordings are automatically saved
+                <strong>Note:</strong> Both recordings are automatically saved
                 with your user account and processed for productivity insights.
+                The achievement recording is required, while the problem
+                recording is optional but recommended for better analysis.
               </p>
             </div>
           </CardContent>
