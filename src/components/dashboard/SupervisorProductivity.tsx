@@ -135,13 +135,13 @@ export function SupervisorProductivity({
         // Fetch recordings with analysis for all supervisors/staff
         let recordingsQuery = supabase
           .from("recordings")
-          .select("user_uuid, analysis, status, created_at")
+          .select("user_uuid, analysis, final_analysis, status, created_at")
           .in(
             "user_uuid",
             users.map((u) => u.uuid)
           )
           .eq("status", "success")
-          .not("analysis", "is", null);
+          .or("analysis.not.is.null,final_analysis.not.is.null");
 
         // Apply date filter if specified
         if (dateRange) {
@@ -209,37 +209,59 @@ export function SupervisorProductivity({
         const userAnalysisCount: Record<string, number> = {};
 
         recordings?.forEach((recording) => {
-          if (recording.analysis && Array.isArray(recording.analysis)) {
-            const analysisArray = recording.analysis as AnalysisData[];
+          let analysisArray: AnalysisData[] = [];
 
-            analysisArray.forEach((analysis) => {
-              const userData = userProductivityMap[recording.user_uuid];
-              if (userData) {
-                // Track analysis count for this user
-                userAnalysisCount[recording.user_uuid] =
-                  (userAnalysisCount[recording.user_uuid] || 0) + 1;
-                const analysisCount = userAnalysisCount[recording.user_uuid];
-
-                // Count exceeded targets
-                if (
-                  (analysis.status || "").toLowerCase().includes("exceeded")
-                ) {
-                  userData.exceededCount++;
-                }
-
-                // Add to average achievement calculation
-                const achievement =
-                  typeof analysis.percentage_achieve === "number"
-                    ? analysis.percentage_achieve
-                    : 0;
-
-                userData.averageAchievement =
-                  (userData.averageAchievement * (analysisCount - 1) +
-                    achievement) /
-                  analysisCount;
-              }
-            });
+          // Use new final_analysis field first, fallback to legacy analysis field
+          if (
+            recording.final_analysis?.analysis &&
+            Array.isArray(recording.final_analysis.analysis)
+          ) {
+            analysisArray = recording.final_analysis.analysis.map(
+              (item: any) => ({
+                status: item.status || "",
+                target_name: item.target_name || "",
+                target_value: item.target_value || "",
+                ahcieved_result:
+                  item.achieved_result || item.ahcieved_result || "",
+                percentage_achieve: item.percentage_achieve,
+              })
+            );
+          } else if (recording.analysis && Array.isArray(recording.analysis)) {
+            analysisArray = recording.analysis as AnalysisData[];
           }
+
+          analysisArray.forEach((analysis) => {
+            const userData = userProductivityMap[recording.user_uuid];
+            if (userData) {
+              // Track analysis count for this user
+              userAnalysisCount[recording.user_uuid] =
+                (userAnalysisCount[recording.user_uuid] || 0) + 1;
+              const analysisCount = userAnalysisCount[recording.user_uuid];
+
+              // Count exceeded targets
+              if ((analysis.status || "").toLowerCase().includes("exceeded")) {
+                userData.exceededCount++;
+              }
+
+              // Add to average achievement calculation - treat null as 0
+              let achievement = 0;
+              if (
+                analysis.percentage_achieve === null ||
+                analysis.percentage_achieve === undefined
+              ) {
+                achievement = 0;
+              } else if (typeof analysis.percentage_achieve === "number") {
+                achievement = analysis.percentage_achieve;
+              } else {
+                achievement = 0;
+              }
+
+              userData.averageAchievement =
+                (userData.averageAchievement * (analysisCount - 1) +
+                  achievement) /
+                analysisCount;
+            }
+          });
         });
 
         // Calculate final productivity scores and prepare data

@@ -272,9 +272,18 @@ export default function DashboardPage() {
     ).length;
 
     // Calculate average achievement percentage
-    const validPercentages = analysisData
-      .filter((item) => typeof item.percentage_achieve === "number")
-      .map((item) => item.percentage_achieve);
+    const validPercentages = analysisData.map((item) => {
+      // Treat null values as 0
+      if (
+        item.percentage_achieve === null ||
+        item.percentage_achieve === undefined
+      ) {
+        return 0;
+      }
+      return typeof item.percentage_achieve === "number"
+        ? item.percentage_achieve
+        : 0;
+    });
 
     const averageAchievement =
       validPercentages.length > 0
