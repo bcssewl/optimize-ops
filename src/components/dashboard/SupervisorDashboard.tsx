@@ -880,15 +880,6 @@ export function SupervisorDashboard() {
                               )}
                             </div>
                           )}
-
-                          {/* Note indicator if available */}
-                          {currentRecording.excuse_recording_analysis?.note && (
-                            <div className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
-                              <span className="text-gray-600 text-xs">
-                                📝 My note available
-                              </span>
-                            </div>
-                          )}
                         </div>
 
                         {/* Issues/Reasons Details Section */}
@@ -917,6 +908,23 @@ export function SupervisorDashboard() {
                                     )
                                   )}
                                 </ul>
+                                {/* Show note if available */}
+                                {currentRecording.excuse_recording_analysis
+                                  .note && (
+                                  <div className="mt-3 pt-2 border-t border-red-200">
+                                    <span className="font-medium text-red-800">
+                                      My Additional Note:
+                                    </span>
+                                    <p className="mt-1 text-red-700 italic break-words">
+                                      "
+                                      {
+                                        currentRecording
+                                          .excuse_recording_analysis.note
+                                      }
+                                      "
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}

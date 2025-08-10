@@ -693,15 +693,6 @@ export default function DashboardPage() {
                               )}
                             </div>
                           )}
-
-                          {/* Note indicator if available */}
-                          {recording.excuse_recording_analysis?.note && (
-                            <div className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
-                              <span className="text-gray-600 text-xs">
-                                📝 Note available
-                              </span>
-                            </div>
-                          )}
                         </div>
 
                         {/* Issues/Reasons Details Section */}
@@ -730,6 +721,19 @@ export default function DashboardPage() {
                                     )
                                   )}
                                 </ul>
+                                {/* Show note if available */}
+                                {recording.excuse_recording_analysis.note && (
+                                  <div className="mt-3 pt-2 border-t border-orange-200">
+                                    <span className="font-medium text-orange-800">
+                                      Additional Note:
+                                    </span>
+                                    <p className="mt-1 text-orange-700 italic break-words">
+                                      "
+                                      {recording.excuse_recording_analysis.note}
+                                      "
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
