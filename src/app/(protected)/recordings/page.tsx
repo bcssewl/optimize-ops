@@ -36,7 +36,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface Recording {
@@ -49,8 +49,20 @@ interface Recording {
   description: string | null;
   transcript: string | null;
   analysis: any;
+  final_analysis?: {
+    analysis: any[];
+    expected_working_hour: number;
+    actual_production_hour: number;
+  };
+  excuse_recording_analysis?: {
+    note: string;
+    reason: string[];
+    total_working_hour: number;
+  };
   status: "in_progress" | "failed" | "success";
   created_at: string;
+  recordingType?: string;
+  displayId?: string;
 }
 
 interface User {
@@ -71,6 +83,7 @@ export default function RecordingsPage() {
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Check if user can view all recordings (admin/manager)
@@ -237,8 +250,76 @@ export default function RecordingsPage() {
     );
   };
 
-  // Filter recordings
-  const filteredRecordings = recordings.filter((recording) => {
+  // Expand recordings into separate rows for each type
+  const expandedRecordings = recordings.flatMap((recording) => {
+    const rows = [];
+
+    // Add achievement row if data exists
+    if (recording.final_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: "achievement",
+        displayId: `${recording.id}-achievement`,
+      });
+    }
+
+    // Add excuse row if data exists
+    if (recording.excuse_recording_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: "excuse",
+        displayId: `${recording.id}-excuse`,
+      });
+    }
+
+    // Add legacy/processing row if no modern analysis
+    if (!recording.final_analysis && !recording.excuse_recording_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: recording.analysis ? "legacy" : "processing",
+        displayId: `${recording.id}-${
+          recording.analysis ? "legacy" : "processing"
+        }`,
+      });
+    }
+
+    return rows;
+  });
+
+  // Get type badge for single type
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case "achievement":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Achievement
+          </span>
+        );
+      case "excuse":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            Excuse
+          </span>
+        );
+      case "legacy":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            Legacy
+          </span>
+        );
+      case "processing":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            Processing
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Filter expanded recordings
+  const filteredRecordings = expandedRecordings.filter((recording) => {
     const matchesSearch =
       recording.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       recording.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,8 +330,21 @@ export default function RecordingsPage() {
     const matchesStatus =
       statusFilter === "all" || recording.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesType =
+      typeFilter === "all" || recording.recordingType === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Group filtered recordings by original recording ID for visual grouping
+  const groupedRecordings = filteredRecordings.reduce((groups, recording) => {
+    const groupKey = recording.id;
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+    groups[groupKey].push(recording);
+    return groups;
+  }, {} as Record<number, Recording[]>);
 
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
@@ -325,6 +419,21 @@ export default function RecordingsPage() {
                   <option value="failed">Failed</option>
                 </select>
               </div>
+              <div>
+                <Label htmlFor="type">Type</Label>
+                <select
+                  id="type"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="all">All Types</option>
+                  <option value="achievement">Achievement</option>
+                  <option value="excuse">Excuse</option>
+                  <option value="legacy">Legacy</option>
+                  <option value="processing">Processing</option>
+                </select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -341,7 +450,7 @@ export default function RecordingsPage() {
                   Loading recordings...
                 </span>
               </div>
-            ) : filteredRecordings.length === 0 ? (
+            ) : Object.keys(groupedRecordings).length === 0 ? (
               <div className="text-center py-8 space-y-4">
                 <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== "all"
@@ -363,7 +472,7 @@ export default function RecordingsPage() {
                             height={16}
                             className="mr-2"
                           />
-                          Start Recording or Upload File
+                          Start Recording
                         </Button>
                       </Link>
                     </div>
@@ -375,114 +484,150 @@ export default function RecordingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>File Name</TableHead>
-                      {canViewAllRecordings && <TableHead>User</TableHead>}
+                      <TableHead>Type</TableHead>
                       <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Created Time</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRecordings.map((recording) => (
-                      <TableRow key={recording.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {recording.file_name}
-                            </div>
-                            {recording.description && (
-                              <div className="text-sm text-muted-foreground">
-                                {recording.description}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        {canViewAllRecordings && (
-                          <TableCell>
-                            <div className="text-sm">
-                              {getUserEmail(recording.user_uuid)}
-                            </div>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          {recording.duration
-                            ? formatDuration(recording.duration)
-                            : "-"}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: "nowrap" }}>
-                          {getStatusBadge(recording.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(
-                              recording.created_at
-                            ).toLocaleDateString()}
-                            <br />
-                            <span className="text-muted-foreground">
-                              {new Date(
-                                recording.created_at
-                              ).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => togglePlayback(recording)}
-                              title="Play/Pause"
-                            >
-                              <FontAwesomeIcon
-                                icon={
-                                  playingRecording === recording.id
-                                    ? faPause
-                                    : faPlay
+                    {Object.entries(groupedRecordings).map(
+                      ([recordingId, recordingGroup], groupIndex) => (
+                        <React.Fragment key={recordingId}>
+                          {/* Add spacing between groups */}
+                          {groupIndex > 0 && (
+                            <TableRow className="h-3">
+                              <TableCell
+                                colSpan={5}
+                                className="p-0 border-0"
+                              ></TableCell>
+                            </TableRow>
+                          )}
+                          {recordingGroup.map((recording, rowIndex) => (
+                            <TableRow
+                              key={recording.displayId}
+                              className={`
+                                border-l border-r border-l-blue-200 border-r-blue-200 bg-blue-50/20
+                                ${
+                                  rowIndex === 0
+                                    ? "border-t border-t-blue-200 rounded-t-lg"
+                                    : ""
                                 }
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadRecording(recording)}
-                              title="Download"
+                                ${
+                                  rowIndex === recordingGroup.length - 1
+                                    ? "border-b border-b-blue-200 rounded-b-lg"
+                                    : ""
+                                }
+                                ${
+                                  recordingGroup.length === 1
+                                    ? "border border-blue-200 rounded-lg"
+                                    : ""
+                                }
+                                ${
+                                  recordingGroup.length > 1
+                                    ? "bg-blue-50/30"
+                                    : "bg-blue-50/20"
+                                }
+                              `}
                             >
-                              <FontAwesomeIcon
-                                icon={faDownload}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedRecording(recording)}
-                              title="View Details"
-                            >
-                              <FontAwesomeIcon
-                                icon={faEye}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(recording)}
-                              title="Delete"
-                            >
-                              <FontAwesomeIcon
-                                icon={faTrash}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">
+                                    {recording.file_name}
+                                  </div>
+                                  {recording.description && (
+                                    <div className="text-sm text-muted-foreground">
+                                      {recording.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {getTypeBadge(
+                                  recording.recordingType || "processing"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {recording.duration
+                                  ? formatDuration(recording.duration)
+                                  : "-"}
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {new Date(
+                                    recording.created_at
+                                  ).toLocaleDateString()}
+                                  <br />
+                                  <span className="text-muted-foreground">
+                                    {new Date(
+                                      recording.created_at
+                                    ).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => togglePlayback(recording)}
+                                    title="Play/Pause"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={
+                                        playingRecording === recording.id
+                                          ? faPause
+                                          : faPlay
+                                      }
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadRecording(recording)}
+                                    title="Download"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faDownload}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSelectedRecording(recording)
+                                    }
+                                    title="View Details"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faEye}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(recording)}
+                                    title="Delete"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faTrash}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
+                      )
+                    )}
                   </TableBody>
                 </Table>
               </div>

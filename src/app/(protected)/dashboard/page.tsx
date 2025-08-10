@@ -23,11 +23,23 @@ import { useEffect, useState } from "react";
 
 // Types for analysis data
 interface AnalysisData {
-  status: string;
+  target_id: number;
   target_name: string;
   target_value: string;
-  ahcieved_result: string;
-  percentage_achieve: number | string;
+  achieved_result: string;
+  percentage_achieve: number;
+}
+
+interface FinalAnalysis {
+  analysis: AnalysisData[];
+  expected_working_hour: number;
+  actual_production_hour: number;
+}
+
+interface ExcuseAnalysis {
+  note: string;
+  reason: string[];
+  total_working_hour: number;
 }
 
 interface Recording {
@@ -35,7 +47,9 @@ interface Recording {
   user_uuid: string;
   full_name?: string;
   email?: string;
-  analysis?: AnalysisData[];
+  analysis?: AnalysisData[]; // Legacy field for backward compatibility
+  final_analysis?: FinalAnalysis;
+  excuse_recording_analysis?: ExcuseAnalysis;
   status: string;
   created_at: string;
 }
@@ -84,6 +98,20 @@ const getDateRange = (filter: DateFilter) => {
   }
 };
 
+// Helper function to get status based on percentage
+const getStatusFromPercentage = (percentage: number) => {
+  if (percentage >= 100) return "Achieved";
+  if (percentage >= 50) return "In Progress";
+  return "Below Target";
+};
+
+// Helper function to get status color class
+const getStatusColor = (percentage: number) => {
+  if (percentage >= 100) return "bg-green-100 text-green-700";
+  if (percentage >= 50) return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
@@ -110,10 +138,10 @@ export default function DashboardPage() {
         let recordingsQuery = supabase
           .from("recordings")
           .select(
-            "id, analysis, status, created_at, user_uuid, full_name, email"
+            "id, analysis, final_analysis, excuse_recording_analysis, status, created_at, user_uuid, full_name, email"
           )
           .eq("status", "success")
-          .not("analysis", "is", null)
+          .or("analysis.not.is.null,final_analysis.not.is.null")
           .order("created_at", { ascending: false });
 
         let recordingsCountQuery = supabase
@@ -173,8 +201,26 @@ export default function DashboardPage() {
         // Extract analysis data from recordings
         const allAnalysis: AnalysisData[] = [];
         recordingsData?.forEach((recording) => {
-          if (recording.analysis && Array.isArray(recording.analysis)) {
-            allAnalysis.push(...recording.analysis);
+          // Use new final_analysis field first, fallback to legacy analysis field
+          if (
+            recording.final_analysis?.analysis &&
+            Array.isArray(recording.final_analysis.analysis)
+          ) {
+            allAnalysis.push(...recording.final_analysis.analysis);
+          } else if (recording.analysis && Array.isArray(recording.analysis)) {
+            // Legacy support - convert old format to new format
+            const legacyData = recording.analysis.map((item: any) => ({
+              target_id: 0, // No target_id in legacy data
+              target_name: item.target_name || "",
+              target_value: item.target_value || "",
+              achieved_result:
+                item.ahcieved_result || item.achieved_result || "",
+              percentage_achieve:
+                typeof item.percentage_achieve === "number"
+                  ? item.percentage_achieve
+                  : 0,
+            }));
+            allAnalysis.push(...legacyData);
           }
         });
         setAnalysisData(allAnalysis);
@@ -217,20 +263,27 @@ export default function DashboardPage() {
       };
     }
 
-    const exceededTargets = analysisData.filter((item) =>
-      (item.status || "").toLowerCase().includes("exceeded")
+    const exceededTargets = analysisData.filter(
+      (item) => item.percentage_achieve >= 100
     ).length;
 
     const inProgressTargets = analysisData.filter(
-      (item) =>
-        (item.status || "").toLowerCase().includes("progress") ||
-        (item.status || "").toLowerCase().includes("started")
+      (item) => item.percentage_achieve < 100 && item.percentage_achieve > 0
     ).length;
 
     // Calculate average achievement percentage
-    const validPercentages = analysisData
-      .filter((item) => typeof item.percentage_achieve === "number")
-      .map((item) => item.percentage_achieve as number);
+    const validPercentages = analysisData.map((item) => {
+      // Treat null values as 0
+      if (
+        item.percentage_achieve === null ||
+        item.percentage_achieve === undefined
+      ) {
+        return 0;
+      }
+      return typeof item.percentage_achieve === "number"
+        ? item.percentage_achieve
+        : 0;
+    });
 
     const averageAchievement =
       validPercentages.length > 0
@@ -355,6 +408,9 @@ export default function DashboardPage() {
               {analytics.exceededTargets}
             </div>
             <div className="text-green-100 text-xs mt-1">
+              Targets with ≥100% achievement
+            </div>
+            <div className="text-green-100 text-xs opacity-80">
               Outstanding achievements
             </div>
           </div>
@@ -367,6 +423,9 @@ export default function DashboardPage() {
               {analytics.inProgressTargets}
             </div>
             <div className="text-orange-100 text-xs mt-1">
+              Targets with 1-99% achievement
+            </div>
+            <div className="text-orange-100 text-xs opacity-80">
               Currently being worked on
             </div>
           </div>
@@ -390,13 +449,29 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Recent Target Analysis</h2>
             <span className="text-sm text-gray-500">
-              Based on latest voice recordings
+              Based on latest voice recordings with productivity insights
             </span>
           </div>
           {recordings.length > 0 ? (
             <div className="space-y-6">
               {recordings.slice(0, 10).map((recording, recordingIndex) => {
-                const analysisArray = recording.analysis as AnalysisData[];
+                // Use new final_analysis field first, fallback to legacy analysis field
+                const analysisArray =
+                  recording.final_analysis?.analysis ||
+                  (recording.analysis
+                    ? recording.analysis.map((item: any) => ({
+                        target_id: 0,
+                        target_name: item.target_name || "",
+                        target_value: item.target_value || "",
+                        achieved_result:
+                          item.ahcieved_result || item.achieved_result || "",
+                        percentage_achieve:
+                          typeof item.percentage_achieve === "number"
+                            ? item.percentage_achieve
+                            : 0,
+                      }))
+                    : []);
+
                 const recordingDate = new Date(
                   recording.created_at
                 ).toLocaleDateString();
@@ -472,19 +547,6 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                           {analysisArray.map((item, targetIndex) => {
-                            const getStatusColor = (status: string) => {
-                              if (status.toLowerCase().includes("exceeded")) {
-                                return "bg-green-100 text-green-700";
-                              } else if (
-                                status.toLowerCase().includes("progress") ||
-                                status.toLowerCase().includes("started")
-                              ) {
-                                return "bg-yellow-100 text-yellow-700";
-                              } else {
-                                return "bg-blue-100 text-blue-700";
-                              }
-                            };
-
                             const achievement =
                               typeof item.percentage_achieve === "number"
                                 ? item.percentage_achieve
@@ -538,10 +600,12 @@ export default function DashboardPage() {
                                 <td className="py-3 px-4 w-1/4">
                                   <span
                                     className={`px-2 py-1 rounded text-xs font-semibold break-words ${getStatusColor(
-                                      item.status || ""
+                                      item.percentage_achieve
                                     )}`}
                                   >
-                                    {item.status || "Unknown"}
+                                    {getStatusFromPercentage(
+                                      item.percentage_achieve
+                                    )}
                                   </span>
                                 </td>
                               </tr>
@@ -550,6 +614,146 @@ export default function DashboardPage() {
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Compact Working Hours & Productivity Information */}
+                    {(recording.final_analysis ||
+                      recording.excuse_recording_analysis) && (
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex flex-wrap gap-2 items-start text-xs">
+                          {/* Working Hours Compact Display */}
+                          {recording.final_analysis && (
+                            <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                width={12}
+                                height={12}
+                                className="text-blue-600"
+                              />
+                              <span className="text-blue-700">
+                                Hours:{" "}
+                                {
+                                  recording.final_analysis
+                                    .actual_production_hour
+                                }
+                                h/
+                                {recording.final_analysis.expected_working_hour}
+                                h
+                              </span>
+                              <span
+                                className={`font-medium px-1 py-0.5 rounded text-xs ${
+                                  recording.final_analysis
+                                    .expected_working_hour > 0 &&
+                                  recording.final_analysis
+                                    .actual_production_hour /
+                                    recording.final_analysis
+                                      .expected_working_hour >=
+                                    0.9
+                                    ? "bg-green-100 text-green-700"
+                                    : recording.final_analysis
+                                        .expected_working_hour > 0 &&
+                                      recording.final_analysis
+                                        .actual_production_hour /
+                                        recording.final_analysis
+                                          .expected_working_hour >=
+                                        0.7
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {recording.final_analysis
+                                  .expected_working_hour > 0
+                                  ? Math.round(
+                                      (recording.final_analysis
+                                        .actual_production_hour /
+                                        recording.final_analysis
+                                          .expected_working_hour) *
+                                        100
+                                    )
+                                  : 0}
+                                %
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Issues Time Lost Display */}
+                          {recording.excuse_recording_analysis && (
+                            <div className="flex items-center gap-2 bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                width={12}
+                                height={12}
+                                className="text-orange-600"
+                              />
+                              <span className="text-orange-700">
+                                Issues:{" "}
+                                {recording.excuse_recording_analysis
+                                  .total_working_hour || 0}
+                                h lost
+                              </span>
+                              {recording.excuse_recording_analysis.reason
+                                .length > 0 && (
+                                <span className="text-orange-600 font-medium">
+                                  (
+                                  {
+                                    recording.excuse_recording_analysis.reason
+                                      .length
+                                  }{" "}
+                                  reason
+                                  {recording.excuse_recording_analysis.reason
+                                    .length > 1
+                                    ? "s"
+                                    : ""}
+                                  )
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Issues/Reasons Details Section */}
+                        {recording.excuse_recording_analysis &&
+                          recording.excuse_recording_analysis.reason.length >
+                            0 && (
+                            <div className="mt-2 bg-orange-25 border border-orange-100 rounded px-3 py-2">
+                              <div className="text-xs">
+                                <span className="font-medium text-orange-800">
+                                  Detailed Reasons:
+                                </span>
+                                <ul className="mt-1 space-y-1">
+                                  {recording.excuse_recording_analysis.reason.map(
+                                    (reason, idx) => (
+                                      <li
+                                        key={idx}
+                                        className="text-orange-700 flex items-start"
+                                      >
+                                        <span className="text-orange-500 mr-2 mt-0.5">
+                                          •
+                                        </span>
+                                        <span className="break-words">
+                                          {reason}
+                                        </span>
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                                {/* Show note if available */}
+                                {recording.excuse_recording_analysis.note && (
+                                  <div className="mt-3 pt-2 border-t border-orange-200">
+                                    <span className="font-medium text-orange-800">
+                                      Additional Note:
+                                    </span>
+                                    <p className="mt-1 text-orange-700 italic break-words">
+                                      "
+                                      {recording.excuse_recording_analysis.note}
+                                      "
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
