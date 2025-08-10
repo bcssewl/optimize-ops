@@ -354,24 +354,28 @@ export function SupervisorDashboard() {
       value: stats.totalTargets.toString(),
       color: "bg-blue-600",
       icon: <FontAwesomeIcon icon={faDollarSign} width={24} height={24} />,
+      description: "All assigned targets",
     },
     {
       label: "Exceeded Targets",
       value: stats.exceededTargets.toString(),
       color: "bg-green-600",
       icon: <FontAwesomeIcon icon={faCheckCircle} width={24} height={24} />,
+      description: "Targets with ≥100% achievement",
     },
     {
       label: "In Progress",
       value: stats.inProgressTargets.toString(),
       color: "bg-orange-500",
       icon: <FontAwesomeIcon icon={faSpinner} width={24} height={24} />,
+      description: "Targets with 1-99% achievement",
     },
     {
       label: "Average Achievement",
       value: `${stats.averageAchievement}%`,
       color: "bg-purple-600",
       icon: <FontAwesomeIcon icon={faStar} width={24} height={24} />,
+      description: "Mean percentage across all targets",
     },
   ];
 
@@ -577,6 +581,7 @@ export function SupervisorDashboard() {
               <div>
                 <div className="font-bold text-lg">{t.value}</div>
                 <div className="text-sm opacity-90">{t.label}</div>
+                <div className="text-xs opacity-75 mt-1">{t.description}</div>
               </div>
             </div>
           ))}

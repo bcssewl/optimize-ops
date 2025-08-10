@@ -399,6 +399,9 @@ export default function DashboardPage() {
               {analytics.exceededTargets}
             </div>
             <div className="text-green-100 text-xs mt-1">
+              Targets with ≥100% achievement
+            </div>
+            <div className="text-green-100 text-xs opacity-80">
               Outstanding achievements
             </div>
           </div>
@@ -411,6 +414,9 @@ export default function DashboardPage() {
               {analytics.inProgressTargets}
             </div>
             <div className="text-orange-100 text-xs mt-1">
+              Targets with 1-99% achievement
+            </div>
+            <div className="text-orange-100 text-xs opacity-80">
               Currently being worked on
             </div>
           </div>
