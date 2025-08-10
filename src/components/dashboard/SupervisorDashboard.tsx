@@ -22,11 +22,23 @@ import { useEffect, useState } from "react";
 
 // Types for analysis data
 interface AnalysisData {
-  status: string;
+  target_id: number;
   target_name: string;
   target_value: string;
-  ahcieved_result: string;
-  percentage_achieve: number | string;
+  achieved_result: string;
+  percentage_achieve: number;
+}
+
+interface FinalAnalysis {
+  analysis: AnalysisData[];
+  expected_working_hour: number;
+  actual_production_hour: number;
+}
+
+interface ExcuseAnalysis {
+  note: string;
+  reason: string[];
+  total_working_hour: number;
 }
 
 interface Target {
@@ -42,7 +54,9 @@ interface Target {
 interface Recording {
   id: number;
   user_uuid: string;
-  analysis?: AnalysisData[];
+  analysis?: AnalysisData[]; // Legacy field for backward compatibility
+  final_analysis?: FinalAnalysis;
+  excuse_recording_analysis?: ExcuseAnalysis;
   status: string;
   created_at: string;
 }
@@ -231,10 +245,10 @@ export function SupervisorDashboard() {
       // Fetch user's recordings with analysis and date filtering
       let recordingsQuery = supabase
         .from("recordings")
-        .select("*")
+        .select("*, final_analysis, excuse_recording_analysis")
         .eq("user_uuid", user.id)
         .eq("status", "success")
-        .not("analysis", "is", null)
+        .or("analysis.not.is.null,final_analysis.not.is.null")
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -256,8 +270,25 @@ export function SupervisorDashboard() {
       // Extract analysis data from recordings
       const allAnalysis: AnalysisData[] = [];
       recordingsData?.forEach((recording) => {
-        if (recording.analysis && Array.isArray(recording.analysis)) {
-          allAnalysis.push(...recording.analysis);
+        // Use new final_analysis field first, fallback to legacy analysis field
+        if (
+          recording.final_analysis?.analysis &&
+          Array.isArray(recording.final_analysis.analysis)
+        ) {
+          allAnalysis.push(...recording.final_analysis.analysis);
+        } else if (recording.analysis && Array.isArray(recording.analysis)) {
+          // Legacy support - convert old format to new format
+          const legacyData = recording.analysis.map((item: any) => ({
+            target_id: 0, // No target_id in legacy data
+            target_name: item.target_name || "",
+            target_value: item.target_value || "",
+            achieved_result: item.ahcieved_result || item.achieved_result || "",
+            percentage_achieve:
+              typeof item.percentage_achieve === "number"
+                ? item.percentage_achieve
+                : 0,
+          }));
+          allAnalysis.push(...legacyData);
         }
       });
       setAnalysisData(allAnalysis);
@@ -280,26 +311,22 @@ export function SupervisorDashboard() {
       };
     }
 
-    const exceededTargets = analysisData.filter((item) =>
-      (item.status || "").toLowerCase().includes("exceeded")
+    const exceededTargets = analysisData.filter(
+      (item) => item.percentage_achieve >= 100
     ).length;
 
     const completedTargets = analysisData.filter(
-      (item) =>
-        (item.status || "").toLowerCase().includes("exceeded") ||
-        (item.status || "").toLowerCase().includes("completed")
+      (item) => item.percentage_achieve >= 100
     ).length;
 
     const inProgressTargets = analysisData.filter(
-      (item) =>
-        (item.status || "").toLowerCase().includes("progress") ||
-        (item.status || "").toLowerCase().includes("started")
+      (item) => item.percentage_achieve < 100 && item.percentage_achieve > 0
     ).length;
 
     // Calculate average achievement percentage
     const validPercentages = analysisData
       .filter((item) => typeof item.percentage_achieve === "number")
-      .map((item) => item.percentage_achieve as number);
+      .map((item) => item.percentage_achieve);
 
     const averageAchievement =
       validPercentages.length > 0
@@ -353,7 +380,23 @@ export function SupervisorDashboard() {
     if (recordings.length === 0) return [];
 
     return recordings.slice(0, 5).map((recording, recordingIndex) => {
-      const analysisArray = recording.analysis as AnalysisData[];
+      // Use new final_analysis field first, fallback to legacy analysis field
+      const analysisArray =
+        recording.final_analysis?.analysis ||
+        (recording.analysis
+          ? recording.analysis.map((item: any) => ({
+              target_id: 0,
+              target_name: item.target_name || "",
+              target_value: item.target_value || "",
+              achieved_result:
+                item.ahcieved_result || item.achieved_result || "",
+              percentage_achieve:
+                typeof item.percentage_achieve === "number"
+                  ? item.percentage_achieve
+                  : 0,
+            }))
+          : []);
+
       const recordingDate = new Date(recording.created_at).toLocaleDateString();
       const recordingTime = new Date(recording.created_at).toLocaleTimeString(
         [],
@@ -364,17 +407,14 @@ export function SupervisorDashboard() {
       );
 
       const targets = analysisArray.map((item, targetIndex) => {
-        const getStatusColor = (status: string) => {
-          if (status.toLowerCase().includes("exceeded")) {
+        const getStatusInfo = (percentage: number) => {
+          if (percentage >= 100) {
             return {
-              status: "Exceeded",
+              status: "Achieved",
               statusColor: "bg-green-100 text-green-700",
               color: "bg-green-500",
             };
-          } else if (
-            status.toLowerCase().includes("progress") ||
-            status.toLowerCase().includes("started")
-          ) {
+          } else if (percentage >= 50) {
             return {
               status: "In Progress",
               statusColor: "bg-yellow-100 text-yellow-700",
@@ -382,18 +422,19 @@ export function SupervisorDashboard() {
             };
           } else {
             return {
-              status: "Completed",
-              statusColor: "bg-blue-100 text-blue-700",
-              color: "bg-blue-500",
+              status: "Below Target",
+              statusColor: "bg-red-100 text-red-700",
+              color: "bg-red-500",
             };
           }
         };
 
-        const statusInfo = getStatusColor(item.status || "");
         const progressPercentage =
           typeof item.percentage_achieve === "number"
             ? item.percentage_achieve
             : 0;
+
+        const statusInfo = getStatusInfo(progressPercentage);
 
         return {
           name:
@@ -422,9 +463,9 @@ export function SupervisorDashboard() {
             />
           ),
           current:
-            (item.ahcieved_result || "").length > 30
-              ? `${(item.ahcieved_result || "").substring(0, 30)}...`
-              : item.ahcieved_result || "N/A",
+            (item.achieved_result || "").length > 30
+              ? `${(item.achieved_result || "").substring(0, 30)}...`
+              : item.achieved_result || "N/A",
           target:
             (item.target_value || "").length > 30
               ? `${(item.target_value || "").substring(0, 30)}...`
@@ -611,6 +652,145 @@ export function SupervisorDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Working Hours & Productivity Summary */}
+      {recordings.some(
+        (r) => r.final_analysis || r.excuse_recording_analysis
+      ) && (
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-semibold text-lg">
+              My Working Hours & Productivity
+            </div>
+            <span className="text-sm text-gray-500">
+              Latest analysis summary
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {recordings
+              .filter((r) => r.final_analysis)
+              .slice(0, 2)
+              .map((recording, index) => {
+                const analysis = recording.final_analysis!;
+                const excuse = recording.excuse_recording_analysis;
+                const productivityRate =
+                  analysis.expected_working_hour > 0
+                    ? Math.round(
+                        (analysis.actual_production_hour /
+                          analysis.expected_working_hour) *
+                          100
+                      )
+                    : 0;
+
+                return (
+                  <div key={recording.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">
+                        {new Date(recording.created_at).toLocaleDateString()}
+                      </span>
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${
+                          productivityRate >= 100
+                            ? "bg-green-100 text-green-700"
+                            : productivityRate >= 75
+                            ? "bg-blue-100 text-blue-700"
+                            : productivityRate >= 50
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {productivityRate}% efficiency
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Production Hours</span>
+                          <span className="font-medium">
+                            {analysis.actual_production_hour}h /{" "}
+                            {analysis.expected_working_hour}h
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full transition-all duration-300 ${
+                              productivityRate >= 100
+                                ? "bg-green-500"
+                                : productivityRate >= 75
+                                ? "bg-blue-500"
+                                : productivityRate >= 50
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{
+                              width: `${Math.min(productivityRate, 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-sm">
+                          <span>Targets Analyzed</span>
+                          <span className="font-medium">
+                            {analysis.analysis.length}
+                          </span>
+                        </div>
+                      </div>
+
+                      {excuse && (
+                        <div className="border-t pt-3">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-red-600">
+                              Issues Reported
+                            </span>
+                            <span className="text-red-600 font-medium">
+                              {excuse.total_working_hour}h lost
+                            </span>
+                          </div>
+                          {excuse.reason.length > 0 && (
+                            <div>
+                              <p className="text-xs text-gray-600 mb-1">
+                                Reasons:
+                              </p>
+                              <ul className="text-xs text-gray-700 space-y-1">
+                                {excuse.reason
+                                  .slice(0, 3)
+                                  .map((reason, idx) => (
+                                    <li key={idx} className="flex items-start">
+                                      <span className="text-red-500 mr-1">
+                                        •
+                                      </span>
+                                      <span>{reason}</span>
+                                    </li>
+                                  ))}
+                                {excuse.reason.length > 3 && (
+                                  <li className="text-gray-500">
+                                    +{excuse.reason.length - 3} more reasons
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                          {excuse.note && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-600">Note:</p>
+                              <p className="text-xs text-gray-700 italic">
+                                {excuse.note}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Target Analysis Results */}
       {analysisData.length > 0 ? (
         <div className="bg-white rounded-xl shadow p-6">

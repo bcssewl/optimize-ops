@@ -363,7 +363,7 @@ export default function RecordingsPage() {
                             height={16}
                             className="mr-2"
                           />
-                          Start Recording or Upload File
+                          Start Recording
                         </Button>
                       </Link>
                     </div>

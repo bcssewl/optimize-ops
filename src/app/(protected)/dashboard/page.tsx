@@ -23,11 +23,23 @@ import { useEffect, useState } from "react";
 
 // Types for analysis data
 interface AnalysisData {
-  status: string;
+  target_id: number;
   target_name: string;
   target_value: string;
-  ahcieved_result: string;
-  percentage_achieve: number | string;
+  achieved_result: string;
+  percentage_achieve: number;
+}
+
+interface FinalAnalysis {
+  analysis: AnalysisData[];
+  expected_working_hour: number;
+  actual_production_hour: number;
+}
+
+interface ExcuseAnalysis {
+  note: string;
+  reason: string[];
+  total_working_hour: number;
 }
 
 interface Recording {
@@ -35,7 +47,9 @@ interface Recording {
   user_uuid: string;
   full_name?: string;
   email?: string;
-  analysis?: AnalysisData[];
+  analysis?: AnalysisData[]; // Legacy field for backward compatibility
+  final_analysis?: FinalAnalysis;
+  excuse_recording_analysis?: ExcuseAnalysis;
   status: string;
   created_at: string;
 }
@@ -84,6 +98,20 @@ const getDateRange = (filter: DateFilter) => {
   }
 };
 
+// Helper function to get status based on percentage
+const getStatusFromPercentage = (percentage: number) => {
+  if (percentage >= 100) return "Achieved";
+  if (percentage >= 50) return "In Progress";
+  return "Below Target";
+};
+
+// Helper function to get status color class
+const getStatusColor = (percentage: number) => {
+  if (percentage >= 100) return "bg-green-100 text-green-700";
+  if (percentage >= 50) return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [dateFilter, setDateFilter] = useState<DateFilter>("alltime");
@@ -110,10 +138,10 @@ export default function DashboardPage() {
         let recordingsQuery = supabase
           .from("recordings")
           .select(
-            "id, analysis, status, created_at, user_uuid, full_name, email"
+            "id, analysis, final_analysis, excuse_recording_analysis, status, created_at, user_uuid, full_name, email"
           )
           .eq("status", "success")
-          .not("analysis", "is", null)
+          .or("analysis.not.is.null,final_analysis.not.is.null")
           .order("created_at", { ascending: false });
 
         let recordingsCountQuery = supabase
@@ -173,8 +201,26 @@ export default function DashboardPage() {
         // Extract analysis data from recordings
         const allAnalysis: AnalysisData[] = [];
         recordingsData?.forEach((recording) => {
-          if (recording.analysis && Array.isArray(recording.analysis)) {
-            allAnalysis.push(...recording.analysis);
+          // Use new final_analysis field first, fallback to legacy analysis field
+          if (
+            recording.final_analysis?.analysis &&
+            Array.isArray(recording.final_analysis.analysis)
+          ) {
+            allAnalysis.push(...recording.final_analysis.analysis);
+          } else if (recording.analysis && Array.isArray(recording.analysis)) {
+            // Legacy support - convert old format to new format
+            const legacyData = recording.analysis.map((item: any) => ({
+              target_id: 0, // No target_id in legacy data
+              target_name: item.target_name || "",
+              target_value: item.target_value || "",
+              achieved_result:
+                item.ahcieved_result || item.achieved_result || "",
+              percentage_achieve:
+                typeof item.percentage_achieve === "number"
+                  ? item.percentage_achieve
+                  : 0,
+            }));
+            allAnalysis.push(...legacyData);
           }
         });
         setAnalysisData(allAnalysis);
@@ -217,20 +263,18 @@ export default function DashboardPage() {
       };
     }
 
-    const exceededTargets = analysisData.filter((item) =>
-      (item.status || "").toLowerCase().includes("exceeded")
+    const exceededTargets = analysisData.filter(
+      (item) => item.percentage_achieve >= 100
     ).length;
 
     const inProgressTargets = analysisData.filter(
-      (item) =>
-        (item.status || "").toLowerCase().includes("progress") ||
-        (item.status || "").toLowerCase().includes("started")
+      (item) => item.percentage_achieve < 100 && item.percentage_achieve > 0
     ).length;
 
     // Calculate average achievement percentage
     const validPercentages = analysisData
       .filter((item) => typeof item.percentage_achieve === "number")
-      .map((item) => item.percentage_achieve as number);
+      .map((item) => item.percentage_achieve);
 
     const averageAchievement =
       validPercentages.length > 0
@@ -385,6 +429,109 @@ export default function DashboardPage() {
         </div>
         <SupervisorProductivity dateFilter={dateFilter} />
 
+        {/* Working Hours & Productivity Overview */}
+        {recordings.some(
+          (r) => r.final_analysis || r.excuse_recording_analysis
+        ) && (
+          <div className="bg-white rounded-xl shadow p-6 my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">
+                Working Hours & Productivity
+              </h2>
+              <span className="text-sm text-gray-500">
+                Based on voice analysis
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recordings
+                .filter((r) => r.final_analysis)
+                .slice(0, 4)
+                .map((recording, index) => {
+                  const analysis = recording.final_analysis!;
+                  const excuse = recording.excuse_recording_analysis;
+                  const productivityRate =
+                    analysis.expected_working_hour > 0
+                      ? Math.round(
+                          (analysis.actual_production_hour /
+                            analysis.expected_working_hour) *
+                            100
+                        )
+                      : 0;
+
+                  return (
+                    <div
+                      key={recording.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">
+                          {recording.full_name ||
+                            recording.email ||
+                            "Unknown User"}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(recording.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-sm">
+                            <span>Production Hours</span>
+                            <span className="font-medium">
+                              {analysis.actual_production_hour}h /{" "}
+                              {analysis.expected_working_hour}h
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                productivityRate >= 100
+                                  ? "bg-green-500"
+                                  : productivityRate >= 75
+                                  ? "bg-blue-500"
+                                  : productivityRate >= 50
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{
+                                width: `${Math.min(productivityRate, 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600">
+                            {productivityRate}% efficiency
+                          </span>
+                        </div>
+
+                        {excuse && (
+                          <div className="border-t pt-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Issues Reported</span>
+                              <span className="text-red-600 font-medium">
+                                {excuse.total_working_hour}h lost
+                              </span>
+                            </div>
+                            {excuse.reason.length > 0 && (
+                              <div className="mt-1">
+                                <span className="text-xs text-gray-600">
+                                  Reasons:{" "}
+                                  {excuse.reason.slice(0, 2).join(", ")}
+                                  {excuse.reason.length > 2 &&
+                                    ` +${excuse.reason.length - 2} more`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {/* Recent Analysis Results */}
         <div className="bg-white rounded-xl shadow p-6 my-8">
           <div className="flex items-center justify-between mb-6">
@@ -396,7 +543,23 @@ export default function DashboardPage() {
           {recordings.length > 0 ? (
             <div className="space-y-6">
               {recordings.slice(0, 10).map((recording, recordingIndex) => {
-                const analysisArray = recording.analysis as AnalysisData[];
+                // Use new final_analysis field first, fallback to legacy analysis field
+                const analysisArray =
+                  recording.final_analysis?.analysis ||
+                  (recording.analysis
+                    ? recording.analysis.map((item: any) => ({
+                        target_id: 0,
+                        target_name: item.target_name || "",
+                        target_value: item.target_value || "",
+                        achieved_result:
+                          item.ahcieved_result || item.achieved_result || "",
+                        percentage_achieve:
+                          typeof item.percentage_achieve === "number"
+                            ? item.percentage_achieve
+                            : 0,
+                      }))
+                    : []);
+
                 const recordingDate = new Date(
                   recording.created_at
                 ).toLocaleDateString();
@@ -472,19 +635,6 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                           {analysisArray.map((item, targetIndex) => {
-                            const getStatusColor = (status: string) => {
-                              if (status.toLowerCase().includes("exceeded")) {
-                                return "bg-green-100 text-green-700";
-                              } else if (
-                                status.toLowerCase().includes("progress") ||
-                                status.toLowerCase().includes("started")
-                              ) {
-                                return "bg-yellow-100 text-yellow-700";
-                              } else {
-                                return "bg-blue-100 text-blue-700";
-                              }
-                            };
-
                             const achievement =
                               typeof item.percentage_achieve === "number"
                                 ? item.percentage_achieve
@@ -538,10 +688,12 @@ export default function DashboardPage() {
                                 <td className="py-3 px-4 w-1/4">
                                   <span
                                     className={`px-2 py-1 rounded text-xs font-semibold break-words ${getStatusColor(
-                                      item.status || ""
+                                      item.percentage_achieve
                                     )}`}
                                   >
-                                    {item.status || "Unknown"}
+                                    {getStatusFromPercentage(
+                                      item.percentage_achieve
+                                    )}
                                   </span>
                                 </td>
                               </tr>
