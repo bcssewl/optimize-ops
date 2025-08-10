@@ -36,7 +36,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface Recording {
@@ -253,34 +253,36 @@ export default function RecordingsPage() {
   // Expand recordings into separate rows for each type
   const expandedRecordings = recordings.flatMap((recording) => {
     const rows = [];
-    
+
     // Add achievement row if data exists
     if (recording.final_analysis) {
       rows.push({
         ...recording,
         recordingType: "achievement",
-        displayId: `${recording.id}-achievement`
+        displayId: `${recording.id}-achievement`,
       });
     }
-    
+
     // Add excuse row if data exists
     if (recording.excuse_recording_analysis) {
       rows.push({
         ...recording,
         recordingType: "excuse",
-        displayId: `${recording.id}-excuse`
+        displayId: `${recording.id}-excuse`,
       });
     }
-    
+
     // Add legacy/processing row if no modern analysis
     if (!recording.final_analysis && !recording.excuse_recording_analysis) {
       rows.push({
         ...recording,
         recordingType: recording.analysis ? "legacy" : "processing",
-        displayId: `${recording.id}-${recording.analysis ? "legacy" : "processing"}`
+        displayId: `${recording.id}-${
+          recording.analysis ? "legacy" : "processing"
+        }`,
       });
     }
-    
+
     return rows;
   });
 
@@ -328,11 +330,21 @@ export default function RecordingsPage() {
     const matchesStatus =
       statusFilter === "all" || recording.status === statusFilter;
 
-    const matchesType = 
+    const matchesType =
       typeFilter === "all" || recording.recordingType === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Group filtered recordings by original recording ID for visual grouping
+  const groupedRecordings = filteredRecordings.reduce((groups, recording) => {
+    const groupKey = recording.id;
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+    groups[groupKey].push(recording);
+    return groups;
+  }, {} as Record<number, Recording[]>);
 
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
@@ -438,7 +450,7 @@ export default function RecordingsPage() {
                   Loading recordings...
                 </span>
               </div>
-            ) : filteredRecordings.length === 0 ? (
+            ) : Object.keys(groupedRecordings).length === 0 ? (
               <div className="text-center py-8 space-y-4">
                 <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== "all"
@@ -479,99 +491,143 @@ export default function RecordingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRecordings.map((recording) => (
-                      <TableRow key={recording.displayId}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {recording.file_name}
-                            </div>
-                            {recording.description && (
-                              <div className="text-sm text-muted-foreground">
-                                {recording.description}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getTypeBadge(recording.recordingType)}
-                        </TableCell>
-                        <TableCell>
-                          {recording.duration
-                            ? formatDuration(recording.duration)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(
-                              recording.created_at
-                            ).toLocaleDateString()}
-                            <br />
-                            <span className="text-muted-foreground">
-                              {new Date(
-                                recording.created_at
-                              ).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => togglePlayback(recording)}
-                              title="Play/Pause"
-                            >
-                              <FontAwesomeIcon
-                                icon={
-                                  playingRecording === recording.id
-                                    ? faPause
-                                    : faPlay
+                    {Object.entries(groupedRecordings).map(
+                      ([recordingId, recordingGroup], groupIndex) => (
+                        <React.Fragment key={recordingId}>
+                          {/* Add spacing between groups */}
+                          {groupIndex > 0 && (
+                            <TableRow className="h-3">
+                              <TableCell
+                                colSpan={5}
+                                className="p-0 border-0"
+                              ></TableCell>
+                            </TableRow>
+                          )}
+                          {recordingGroup.map((recording, rowIndex) => (
+                            <TableRow
+                              key={recording.displayId}
+                              className={`
+                                border-l border-r border-l-blue-200 border-r-blue-200 bg-blue-50/20
+                                ${
+                                  rowIndex === 0
+                                    ? "border-t border-t-blue-200 rounded-t-lg"
+                                    : ""
                                 }
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadRecording(recording)}
-                              title="Download"
+                                ${
+                                  rowIndex === recordingGroup.length - 1
+                                    ? "border-b border-b-blue-200 rounded-b-lg"
+                                    : ""
+                                }
+                                ${
+                                  recordingGroup.length === 1
+                                    ? "border border-blue-200 rounded-lg"
+                                    : ""
+                                }
+                                ${
+                                  recordingGroup.length > 1
+                                    ? "bg-blue-50/30"
+                                    : "bg-blue-50/20"
+                                }
+                              `}
                             >
-                              <FontAwesomeIcon
-                                icon={faDownload}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedRecording(recording)}
-                              title="View Details"
-                            >
-                              <FontAwesomeIcon
-                                icon={faEye}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(recording)}
-                              title="Delete"
-                            >
-                              <FontAwesomeIcon
-                                icon={faTrash}
-                                width={14}
-                                height={14}
-                              />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">
+                                    {recording.file_name}
+                                  </div>
+                                  {recording.description && (
+                                    <div className="text-sm text-muted-foreground">
+                                      {recording.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {getTypeBadge(
+                                  recording.recordingType || "processing"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {recording.duration
+                                  ? formatDuration(recording.duration)
+                                  : "-"}
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {new Date(
+                                    recording.created_at
+                                  ).toLocaleDateString()}
+                                  <br />
+                                  <span className="text-muted-foreground">
+                                    {new Date(
+                                      recording.created_at
+                                    ).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => togglePlayback(recording)}
+                                    title="Play/Pause"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={
+                                        playingRecording === recording.id
+                                          ? faPause
+                                          : faPlay
+                                      }
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadRecording(recording)}
+                                    title="Download"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faDownload}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSelectedRecording(recording)
+                                    }
+                                    title="View Details"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faEye}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(recording)}
+                                    title="Delete"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faTrash}
+                                      width={14}
+                                      height={14}
+                                    />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
+                      )
+                    )}
                   </TableBody>
                 </Table>
               </div>
