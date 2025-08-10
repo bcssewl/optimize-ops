@@ -429,115 +429,12 @@ export default function DashboardPage() {
         </div>
         <SupervisorProductivity dateFilter={dateFilter} />
 
-        {/* Working Hours & Productivity Overview */}
-        {recordings.some(
-          (r) => r.final_analysis || r.excuse_recording_analysis
-        ) && (
-          <div className="bg-white rounded-xl shadow p-6 my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
-                Working Hours & Productivity
-              </h2>
-              <span className="text-sm text-gray-500">
-                Based on voice analysis
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recordings
-                .filter((r) => r.final_analysis)
-                .slice(0, 4)
-                .map((recording, index) => {
-                  const analysis = recording.final_analysis!;
-                  const excuse = recording.excuse_recording_analysis;
-                  const productivityRate =
-                    analysis.expected_working_hour > 0
-                      ? Math.round(
-                          (analysis.actual_production_hour /
-                            analysis.expected_working_hour) *
-                            100
-                        )
-                      : 0;
-
-                  return (
-                    <div
-                      key={recording.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">
-                          {recording.full_name ||
-                            recording.email ||
-                            "Unknown User"}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(recording.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between text-sm">
-                            <span>Production Hours</span>
-                            <span className="font-medium">
-                              {analysis.actual_production_hour}h /{" "}
-                              {analysis.expected_working_hour}h
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                productivityRate >= 100
-                                  ? "bg-green-500"
-                                  : productivityRate >= 75
-                                  ? "bg-blue-500"
-                                  : productivityRate >= 50
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                              }`}
-                              style={{
-                                width: `${Math.min(productivityRate, 100)}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-gray-600">
-                            {productivityRate}% efficiency
-                          </span>
-                        </div>
-
-                        {excuse && (
-                          <div className="border-t pt-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Issues Reported</span>
-                              <span className="text-red-600 font-medium">
-                                {excuse.total_working_hour}h lost
-                              </span>
-                            </div>
-                            {excuse.reason.length > 0 && (
-                              <div className="mt-1">
-                                <span className="text-xs text-gray-600">
-                                  Reasons:{" "}
-                                  {excuse.reason.slice(0, 2).join(", ")}
-                                  {excuse.reason.length > 2 &&
-                                    ` +${excuse.reason.length - 2} more`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-
         {/* Recent Analysis Results */}
         <div className="bg-white rounded-xl shadow p-6 my-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Recent Target Analysis</h2>
             <span className="text-sm text-gray-500">
-              Based on latest voice recordings
+              Based on latest voice recordings with productivity insights
             </span>
           </div>
           {recordings.length > 0 ? (
@@ -702,6 +599,142 @@ export default function DashboardPage() {
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Compact Working Hours & Productivity Information */}
+                    {(recording.final_analysis ||
+                      recording.excuse_recording_analysis) && (
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex flex-wrap gap-2 items-start text-xs">
+                          {/* Working Hours Compact Display */}
+                          {recording.final_analysis && (
+                            <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                width={12}
+                                height={12}
+                                className="text-blue-600"
+                              />
+                              <span className="text-blue-700">
+                                Hours:{" "}
+                                {
+                                  recording.final_analysis
+                                    .actual_production_hour
+                                }
+                                h/
+                                {recording.final_analysis.expected_working_hour}
+                                h
+                              </span>
+                              <span
+                                className={`font-medium px-1 py-0.5 rounded text-xs ${
+                                  recording.final_analysis
+                                    .expected_working_hour > 0 &&
+                                  recording.final_analysis
+                                    .actual_production_hour /
+                                    recording.final_analysis
+                                      .expected_working_hour >=
+                                    0.9
+                                    ? "bg-green-100 text-green-700"
+                                    : recording.final_analysis
+                                        .expected_working_hour > 0 &&
+                                      recording.final_analysis
+                                        .actual_production_hour /
+                                        recording.final_analysis
+                                          .expected_working_hour >=
+                                        0.7
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {recording.final_analysis
+                                  .expected_working_hour > 0
+                                  ? Math.round(
+                                      (recording.final_analysis
+                                        .actual_production_hour /
+                                        recording.final_analysis
+                                          .expected_working_hour) *
+                                        100
+                                    )
+                                  : 0}
+                                %
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Issues Time Lost Display */}
+                          {recording.excuse_recording_analysis && (
+                            <div className="flex items-center gap-2 bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                width={12}
+                                height={12}
+                                className="text-orange-600"
+                              />
+                              <span className="text-orange-700">
+                                Issues:{" "}
+                                {recording.excuse_recording_analysis
+                                  .total_working_hour || 0}
+                                h lost
+                              </span>
+                              {recording.excuse_recording_analysis.reason
+                                .length > 0 && (
+                                <span className="text-orange-600 font-medium">
+                                  (
+                                  {
+                                    recording.excuse_recording_analysis.reason
+                                      .length
+                                  }{" "}
+                                  reason
+                                  {recording.excuse_recording_analysis.reason
+                                    .length > 1
+                                    ? "s"
+                                    : ""}
+                                  )
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Note indicator if available */}
+                          {recording.excuse_recording_analysis?.note && (
+                            <div className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                              <span className="text-gray-600 text-xs">
+                                📝 Note available
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Issues/Reasons Details Section */}
+                        {recording.excuse_recording_analysis &&
+                          recording.excuse_recording_analysis.reason.length >
+                            0 && (
+                            <div className="mt-2 bg-orange-25 border border-orange-100 rounded px-3 py-2">
+                              <div className="text-xs">
+                                <span className="font-medium text-orange-800">
+                                  Detailed Reasons:
+                                </span>
+                                <ul className="mt-1 space-y-1">
+                                  {recording.excuse_recording_analysis.reason.map(
+                                    (reason, idx) => (
+                                      <li
+                                        key={idx}
+                                        className="text-orange-700 flex items-start"
+                                      >
+                                        <span className="text-orange-500 mr-2 mt-0.5">
+                                          •
+                                        </span>
+                                        <span className="break-words">
+                                          {reason}
+                                        </span>
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -653,151 +653,13 @@ export function SupervisorDashboard() {
         </div>
       </div>
 
-      {/* Working Hours & Productivity Summary */}
-      {recordings.some(
-        (r) => r.final_analysis || r.excuse_recording_analysis
-      ) && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="font-semibold text-lg">
-              My Working Hours & Productivity
-            </div>
-            <span className="text-sm text-gray-500">
-              Latest analysis summary
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {recordings
-              .filter((r) => r.final_analysis)
-              .slice(0, 2)
-              .map((recording, index) => {
-                const analysis = recording.final_analysis!;
-                const excuse = recording.excuse_recording_analysis;
-                const productivityRate =
-                  analysis.expected_working_hour > 0
-                    ? Math.round(
-                        (analysis.actual_production_hour /
-                          analysis.expected_working_hour) *
-                          100
-                      )
-                    : 0;
-
-                return (
-                  <div key={recording.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700">
-                        {new Date(recording.created_at).toLocaleDateString()}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded ${
-                          productivityRate >= 100
-                            ? "bg-green-100 text-green-700"
-                            : productivityRate >= 75
-                            ? "bg-blue-100 text-blue-700"
-                            : productivityRate >= 50
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {productivityRate}% efficiency
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Production Hours</span>
-                          <span className="font-medium">
-                            {analysis.actual_production_hour}h /{" "}
-                            {analysis.expected_working_hour}h
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div
-                            className={`h-3 rounded-full transition-all duration-300 ${
-                              productivityRate >= 100
-                                ? "bg-green-500"
-                                : productivityRate >= 75
-                                ? "bg-blue-500"
-                                : productivityRate >= 50
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                            }`}
-                            style={{
-                              width: `${Math.min(productivityRate, 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-sm">
-                          <span>Targets Analyzed</span>
-                          <span className="font-medium">
-                            {analysis.analysis.length}
-                          </span>
-                        </div>
-                      </div>
-
-                      {excuse && (
-                        <div className="border-t pt-3">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span className="text-red-600">
-                              Issues Reported
-                            </span>
-                            <span className="text-red-600 font-medium">
-                              {excuse.total_working_hour}h lost
-                            </span>
-                          </div>
-                          {excuse.reason.length > 0 && (
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Reasons:
-                              </p>
-                              <ul className="text-xs text-gray-700 space-y-1">
-                                {excuse.reason
-                                  .slice(0, 3)
-                                  .map((reason, idx) => (
-                                    <li key={idx} className="flex items-start">
-                                      <span className="text-red-500 mr-1">
-                                        •
-                                      </span>
-                                      <span>{reason}</span>
-                                    </li>
-                                  ))}
-                                {excuse.reason.length > 3 && (
-                                  <li className="text-gray-500">
-                                    +{excuse.reason.length - 3} more reasons
-                                  </li>
-                                )}
-                              </ul>
-                            </div>
-                          )}
-                          {excuse.note && (
-                            <div className="mt-2">
-                              <p className="text-xs text-gray-600">Note:</p>
-                              <p className="text-xs text-gray-700 italic">
-                                {excuse.note}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
       {/* Target Analysis Results */}
       {analysisData.length > 0 ? (
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="font-semibold text-lg">Live Target Analysis</div>
             <span className="text-sm text-gray-500">
-              Based on latest voice recordings
+              Based on latest voice recordings with productivity insights
             </span>
           </div>
           <div className="space-y-6">
@@ -909,6 +771,158 @@ export function SupervisorDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Working Hours & Productivity Information for this Recording */}
+                {recordings.length > 0 &&
+                  (() => {
+                    const currentRecording = recordings.find(
+                      (r) => r.id === recording.recordingId
+                    );
+                    if (
+                      !currentRecording ||
+                      (!currentRecording.final_analysis &&
+                        !currentRecording.excuse_recording_analysis)
+                    ) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex flex-wrap gap-2 items-start text-xs">
+                          {/* Working Hours Compact Display */}
+                          {currentRecording.final_analysis && (
+                            <div className="flex items-center gap-2 bg-green-50 px-2 py-1 rounded border border-green-200">
+                              <FontAwesomeIcon
+                                icon={faCheckCircle}
+                                width={12}
+                                height={12}
+                                className="text-green-600"
+                              />
+                              <span className="text-green-700">
+                                My Hours:{" "}
+                                {
+                                  currentRecording.final_analysis
+                                    .actual_production_hour
+                                }
+                                h/
+                                {
+                                  currentRecording.final_analysis
+                                    .expected_working_hour
+                                }
+                                h
+                              </span>
+                              <span
+                                className={`font-medium px-1 py-0.5 rounded text-xs ${
+                                  currentRecording.final_analysis
+                                    .expected_working_hour > 0 &&
+                                  currentRecording.final_analysis
+                                    .actual_production_hour /
+                                    currentRecording.final_analysis
+                                      .expected_working_hour >=
+                                    0.9
+                                    ? "bg-green-100 text-green-700"
+                                    : currentRecording.final_analysis
+                                        .expected_working_hour > 0 &&
+                                      currentRecording.final_analysis
+                                        .actual_production_hour /
+                                        currentRecording.final_analysis
+                                          .expected_working_hour >=
+                                        0.7
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {currentRecording.final_analysis
+                                  .expected_working_hour > 0
+                                  ? Math.round(
+                                      (currentRecording.final_analysis
+                                        .actual_production_hour /
+                                        currentRecording.final_analysis
+                                          .expected_working_hour) *
+                                        100
+                                    )
+                                  : 0}
+                                %
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Issues Time Lost Display */}
+                          {currentRecording.excuse_recording_analysis && (
+                            <div className="flex items-center gap-2 bg-red-50 px-2 py-1 rounded border border-red-200">
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                width={12}
+                                height={12}
+                                className="text-red-600"
+                              />
+                              <span className="text-red-700">
+                                My Issues:{" "}
+                                {currentRecording.excuse_recording_analysis
+                                  .total_working_hour || 0}
+                                h lost
+                              </span>
+                              {currentRecording.excuse_recording_analysis.reason
+                                .length > 0 && (
+                                <span className="text-red-600 font-medium">
+                                  (
+                                  {
+                                    currentRecording.excuse_recording_analysis
+                                      .reason.length
+                                  }{" "}
+                                  issue
+                                  {currentRecording.excuse_recording_analysis
+                                    .reason.length > 1
+                                    ? "s"
+                                    : ""}
+                                  )
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Note indicator if available */}
+                          {currentRecording.excuse_recording_analysis?.note && (
+                            <div className="bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                              <span className="text-gray-600 text-xs">
+                                📝 My note available
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Issues/Reasons Details Section */}
+                        {currentRecording.excuse_recording_analysis &&
+                          currentRecording.excuse_recording_analysis.reason
+                            .length > 0 && (
+                            <div className="mt-2 bg-red-25 border border-red-100 rounded px-3 py-2">
+                              <div className="text-xs">
+                                <span className="font-medium text-red-800">
+                                  Issues I faced:
+                                </span>
+                                <ul className="mt-1 space-y-1">
+                                  {currentRecording.excuse_recording_analysis.reason.map(
+                                    (reason, idx) => (
+                                      <li
+                                        key={idx}
+                                        className="text-red-700 flex items-start"
+                                      >
+                                        <span className="text-red-500 mr-2 mt-0.5">
+                                          •
+                                        </span>
+                                        <span className="break-words">
+                                          {reason}
+                                        </span>
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })()}
               </div>
             ))}
           </div>
