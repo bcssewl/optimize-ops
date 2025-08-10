@@ -49,8 +49,20 @@ interface Recording {
   description: string | null;
   transcript: string | null;
   analysis: any;
+  final_analysis?: {
+    analysis: any[];
+    expected_working_hour: number;
+    actual_production_hour: number;
+  };
+  excuse_recording_analysis?: {
+    note: string;
+    reason: string[];
+    total_working_hour: number;
+  };
   status: "in_progress" | "failed" | "success";
   created_at: string;
+  recordingType?: string;
+  displayId?: string;
 }
 
 interface User {
@@ -71,6 +83,7 @@ export default function RecordingsPage() {
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Check if user can view all recordings (admin/manager)
@@ -237,8 +250,74 @@ export default function RecordingsPage() {
     );
   };
 
-  // Filter recordings
-  const filteredRecordings = recordings.filter((recording) => {
+  // Expand recordings into separate rows for each type
+  const expandedRecordings = recordings.flatMap((recording) => {
+    const rows = [];
+    
+    // Add achievement row if data exists
+    if (recording.final_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: "achievement",
+        displayId: `${recording.id}-achievement`
+      });
+    }
+    
+    // Add excuse row if data exists
+    if (recording.excuse_recording_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: "excuse",
+        displayId: `${recording.id}-excuse`
+      });
+    }
+    
+    // Add legacy/processing row if no modern analysis
+    if (!recording.final_analysis && !recording.excuse_recording_analysis) {
+      rows.push({
+        ...recording,
+        recordingType: recording.analysis ? "legacy" : "processing",
+        displayId: `${recording.id}-${recording.analysis ? "legacy" : "processing"}`
+      });
+    }
+    
+    return rows;
+  });
+
+  // Get type badge for single type
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case "achievement":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Achievement
+          </span>
+        );
+      case "excuse":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            Excuse
+          </span>
+        );
+      case "legacy":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            Legacy
+          </span>
+        );
+      case "processing":
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            Processing
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Filter expanded recordings
+  const filteredRecordings = expandedRecordings.filter((recording) => {
     const matchesSearch =
       recording.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       recording.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,7 +328,10 @@ export default function RecordingsPage() {
     const matchesStatus =
       statusFilter === "all" || recording.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesType = 
+      typeFilter === "all" || recording.recordingType === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   return (
@@ -325,6 +407,21 @@ export default function RecordingsPage() {
                   <option value="failed">Failed</option>
                 </select>
               </div>
+              <div>
+                <Label htmlFor="type">Type</Label>
+                <select
+                  id="type"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="all">All Types</option>
+                  <option value="achievement">Achievement</option>
+                  <option value="excuse">Excuse</option>
+                  <option value="legacy">Legacy</option>
+                  <option value="processing">Processing</option>
+                </select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -375,16 +472,15 @@ export default function RecordingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>File Name</TableHead>
-                      {canViewAllRecordings && <TableHead>User</TableHead>}
+                      <TableHead>Type</TableHead>
                       <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Created Time</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredRecordings.map((recording) => (
-                      <TableRow key={recording.id}>
+                      <TableRow key={recording.displayId}>
                         <TableCell>
                           <div>
                             <div className="font-medium">
@@ -397,20 +493,13 @@ export default function RecordingsPage() {
                             )}
                           </div>
                         </TableCell>
-                        {canViewAllRecordings && (
-                          <TableCell>
-                            <div className="text-sm">
-                              {getUserEmail(recording.user_uuid)}
-                            </div>
-                          </TableCell>
-                        )}
+                        <TableCell>
+                          {getTypeBadge(recording.recordingType)}
+                        </TableCell>
                         <TableCell>
                           {recording.duration
                             ? formatDuration(recording.duration)
                             : "-"}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: "nowrap" }}>
-                          {getStatusBadge(recording.status)}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
