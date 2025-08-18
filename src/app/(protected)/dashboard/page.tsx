@@ -209,18 +209,20 @@ export default function DashboardPage() {
             allAnalysis.push(...recording.final_analysis.analysis);
           } else if (recording.analysis && Array.isArray(recording.analysis)) {
             // Legacy support - convert old format to new format
-            const legacyData = recording.analysis.map((item: any) => ({
-              target_id: 0, // No target_id in legacy data
-              target_name: item.target_name || "",
-              target_value: item.target_value || "",
-              achieved_result:
-                item.ahcieved_result || item.achieved_result || "",
-              percentage_achieve:
-                typeof item.percentage_achieve === "number"
-                  ? item.percentage_achieve
-                  : 0,
-            }));
-            allAnalysis.push(...legacyData);
+            if (Array.isArray(recording.analysis)) {
+              const legacyData = recording.analysis.map((item: any) => ({
+                target_id: 0, // No target_id in legacy data
+                target_name: item.target_name || "",
+                target_value: item.target_value || "",
+                achieved_result:
+                  item.ahcieved_result || item.achieved_result || "",
+                percentage_achieve:
+                  typeof item.percentage_achieve === "number"
+                    ? item.percentage_achieve
+                    : 0,
+              }));
+              allAnalysis.push(...legacyData);
+            }
           }
         });
         setAnalysisData(allAnalysis);
@@ -456,21 +458,23 @@ export default function DashboardPage() {
             <div className="space-y-6">
               {recordings.slice(0, 10).map((recording, recordingIndex) => {
                 // Use new final_analysis field first, fallback to legacy analysis field
-                const analysisArray =
-                  recording.final_analysis?.analysis ||
-                  (recording.analysis
-                    ? recording.analysis.map((item: any) => ({
-                        target_id: 0,
-                        target_name: item.target_name || "",
-                        target_value: item.target_value || "",
-                        achieved_result:
-                          item.ahcieved_result || item.achieved_result || "",
-                        percentage_achieve:
-                          typeof item.percentage_achieve === "number"
-                            ? item.percentage_achieve
-                            : 0,
-                      }))
-                    : []);
+                const analysisArray = Array.isArray(
+                  recording.final_analysis?.analysis
+                )
+                  ? recording.final_analysis.analysis
+                  : Array.isArray(recording.analysis)
+                  ? recording.analysis.map((item: any) => ({
+                      target_id: 0,
+                      target_name: item.target_name || "",
+                      target_value: item.target_value || "",
+                      achieved_result:
+                        item.ahcieved_result || item.achieved_result || "",
+                      percentage_achieve:
+                        typeof item.percentage_achieve === "number"
+                          ? item.percentage_achieve
+                          : 0,
+                    }))
+                  : [];
 
                 const recordingDate = new Date(
                   recording.created_at
