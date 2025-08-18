@@ -212,10 +212,7 @@ export function SupervisorProductivity({
           let analysisArray: AnalysisData[] = [];
 
           // Use new final_analysis field first, fallback to legacy analysis field
-          if (
-            recording.final_analysis?.analysis &&
-            Array.isArray(recording.final_analysis.analysis)
-          ) {
+          if (Array.isArray(recording.final_analysis?.analysis)) {
             analysisArray = recording.final_analysis.analysis.map(
               (item: any) => ({
                 status: item.status || "",
