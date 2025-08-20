@@ -45,6 +45,9 @@ interface Recording {
   file_name: string;
   file_path: string;
   file_type: string;
+  excuse_recording_file_name: string;
+  excuse_recording_file_path: string;
+  excuse_recording_file_type: string;
   duration: number | null;
   description: string | null;
   transcript: string | null;
@@ -77,7 +80,8 @@ export default function RecordingsPage() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [playingRecording, setPlayingRecording] = useState<number | null>(null);
+  // Use displayId for unique row identification
+  const [playingDisplayId, setPlayingDisplayId] = useState<string | null>(null);
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(
     null
   );
@@ -172,15 +176,25 @@ export default function RecordingsPage() {
 
   // Play/pause recording
   const togglePlayback = async (recording: Recording) => {
-    if (playingRecording === recording.id) {
+    if (playingDisplayId === recording.displayId) {
       audioRef.current?.pause();
-      setPlayingRecording(null);
+      setPlayingDisplayId(null);
     } else {
       try {
         const supabase = createClient();
+        let filePath: string;
+        if (recording.recordingType === "excuse") {
+          filePath = recording.excuse_recording_file_path || "";
+        } else {
+          filePath = recording.file_path || "";
+        }
+        if (!filePath) {
+          toast.error("No file path available for this recording.");
+          return;
+        }
         const { data: urlData } = await supabase.storage
           .from("audio-recordings")
-          .createSignedUrl(recording.file_path, 3600);
+          .createSignedUrl(filePath, 3600);
 
         if (urlData?.signedUrl) {
           if (audioRef.current) {
@@ -190,14 +204,14 @@ export default function RecordingsPage() {
           const audio = new Audio(urlData.signedUrl);
           audioRef.current = audio;
 
-          audio.onended = () => setPlayingRecording(null);
+          audio.onended = () => setPlayingDisplayId(null);
           audio.onerror = () => {
             toast.error("Failed to load audio");
-            setPlayingRecording(null);
+            setPlayingDisplayId(null);
           };
 
           await audio.play();
-          setPlayingRecording(recording.id);
+          setPlayingDisplayId(recording.displayId || null);
         }
       } catch (error) {
         toast.error("Failed to play recording");
@@ -209,14 +223,26 @@ export default function RecordingsPage() {
   const downloadRecording = async (recording: Recording) => {
     try {
       const supabase = createClient();
+      let filePath: string, fileName: string;
+      if (recording.recordingType === "excuse") {
+        filePath = recording.excuse_recording_file_path || "";
+        fileName = recording.excuse_recording_file_name || "recording.mp4";
+      } else {
+        filePath = recording.file_path || "";
+        fileName = recording.file_name || "recording.mp4";
+      }
+      if (!filePath) {
+        toast.error("No file path available for this recording.");
+        return;
+      }
       const { data: urlData } = await supabase.storage
         .from("audio-recordings")
-        .createSignedUrl(recording.file_path, 3600);
+        .createSignedUrl(filePath, 3600);
 
       if (urlData?.signedUrl) {
         const link = document.createElement("a");
         link.href = urlData.signedUrl;
-        link.download = recording.file_name;
+        link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -260,6 +286,13 @@ export default function RecordingsPage() {
         ...recording,
         recordingType: "achievement",
         displayId: `${recording.id}-achievement`,
+        file_name: recording.file_name || "recording.mp4",
+        file_path: recording.file_path || "",
+        file_type: recording.file_type || "audio/mp4",
+        duration: recording.duration,
+        excuse_recording_file_name: recording.excuse_recording_file_name || "",
+        excuse_recording_file_path: recording.excuse_recording_file_path || "",
+        excuse_recording_file_type: recording.excuse_recording_file_type || "",
       });
     }
 
@@ -269,6 +302,17 @@ export default function RecordingsPage() {
         ...recording,
         recordingType: "excuse",
         displayId: `${recording.id}-excuse`,
+        file_name: recording.excuse_recording_file_name || "recording.mp4",
+        file_path: recording.excuse_recording_file_path || "",
+        file_type: recording.excuse_recording_file_type || "audio/mp4",
+        duration:
+          recording.excuse_recording_analysis?.total_working_hour ||
+          recording.duration,
+        excuse_recording_file_name:
+          recording.excuse_recording_file_name || "recording.mp4",
+        excuse_recording_file_path: recording.excuse_recording_file_path || "",
+        excuse_recording_file_type:
+          recording.excuse_recording_file_type || "audio/mp4",
       });
     }
 
@@ -321,8 +365,12 @@ export default function RecordingsPage() {
   // Filter expanded recordings
   const filteredRecordings = expandedRecordings.filter((recording) => {
     const matchesSearch =
-      recording.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      recording.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (recording.file_name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (recording.description || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       getUserEmail(recording.user_uuid)
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -485,8 +533,6 @@ export default function RecordingsPage() {
                     <TableRow>
                       <TableHead>File Name</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Created Time</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -547,24 +593,8 @@ export default function RecordingsPage() {
                                   recording.recordingType || "processing"
                                 )}
                               </TableCell>
-                              <TableCell>
-                                {recording.duration
-                                  ? formatDuration(recording.duration)
-                                  : "-"}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {new Date(
-                                    recording.created_at
-                                  ).toLocaleDateString()}
-                                  <br />
-                                  <span className="text-muted-foreground">
-                                    {new Date(
-                                      recording.created_at
-                                    ).toLocaleTimeString()}
-                                  </span>
-                                </div>
-                              </TableCell>
+                              {/* Duration column removed */}
+                              {/* Created time column removed */}
                               <TableCell>
                                 <div className="flex space-x-2">
                                   <Button
@@ -575,7 +605,7 @@ export default function RecordingsPage() {
                                   >
                                     <FontAwesomeIcon
                                       icon={
-                                        playingRecording === recording.id
+                                        playingDisplayId === recording.displayId
                                           ? faPause
                                           : faPlay
                                       }
