@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+
 import { Button } from "@/src/components/ui/button";
 import {
   Card,
@@ -25,6 +29,7 @@ import {
 } from "@/src/components/ui/table";
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
+
 import {
   faDownload,
   faEye,
@@ -35,9 +40,6 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 interface Recording {
   id: number;
@@ -80,7 +82,6 @@ export default function RecordingsPage() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  // Use displayId for unique row identification
   const [playingDisplayId, setPlayingDisplayId] = useState<string | null>(null);
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(
     null
@@ -88,249 +89,211 @@ export default function RecordingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Check if user can view all recordings (admin/manager)
   const canViewAllRecordings =
     user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
     fetchRecordings();
-    if (canViewAllRecordings) {
-      fetchUsers();
-    }
+    if (canViewAllRecordings) fetchUsers();
   }, [user, canViewAllRecordings]);
 
-  const fetchRecordings = async () => {
+  async function fetchRecordings() {
     if (!user) return;
-
     setLoading(true);
     const supabase = createClient();
-
     let query = supabase
       .from("recordings")
       .select("*")
       .order("created_at", { ascending: false });
-
-    // If not admin/manager, only show own recordings
-    if (!canViewAllRecordings) {
-      query = query.eq("user_uuid", user.id);
-    }
-
-    const { data: recordingsData, error } = await query;
-
-    if (error) {
-      toast.error("Failed to fetch recordings");
-    } else {
-      setRecordings(recordingsData || []);
-    }
+    if (!canViewAllRecordings) query = query.eq("user_uuid", user.id);
+    const { data, error } = await query;
+    if (error) toast.error("Failed to fetch recordings");
+    else setRecordings(data || []);
     setLoading(false);
-  };
+  }
 
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     const supabase = createClient();
-    const { data: usersData } = await supabase
+    const { data } = await supabase
       .from("users")
       .select("id, uuid, email, role");
-    setUsers(usersData || []);
-  };
+    setUsers(data || []);
+  }
 
-  // Get user email by UUID
-  const getUserEmail = (userUuid: string) => {
-    const foundUser = users.find((u) => u.uuid === userUuid);
-    return foundUser?.email || "Unknown User";
-  };
+  const getUserEmail = (userUuid: string) =>
+    users.find((u) => u.uuid === userUuid)?.email || "Unknown User";
 
-  // Delete recording
-  const handleDelete = async (recording: Recording) => {
+  async function handleDelete(recording: Recording) {
     if (!confirm("Are you sure you want to delete this recording?")) return;
-
     try {
       const supabase = createClient();
-
-      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from("audio-recordings")
         .remove([recording.file_path]);
-
-      if (storageError) {
-        console.warn("Storage deletion error:", storageError);
-      }
-
-      // Delete from database
+      if (storageError) console.warn("Storage deletion error:", storageError);
       const { error: dbError } = await supabase
         .from("recordings")
         .delete()
         .eq("id", recording.id);
-
-      if (dbError) {
-        throw dbError;
-      }
-
+      if (dbError) throw dbError;
       toast.success("Recording deleted successfully!");
       await fetchRecordings();
-    } catch (error: any) {
-      toast.error(`Failed to delete recording: ${error.message}`);
+    } catch (err: any) {
+      toast.error(`Failed to delete recording: ${err.message}`);
     }
-  };
+  }
 
-  // Play/pause recording
-  const togglePlayback = async (recording: Recording) => {
+  async function togglePlayback(recording: Recording) {
     if (playingDisplayId === recording.displayId) {
       audioRef.current?.pause();
       setPlayingDisplayId(null);
-    } else {
-      try {
-        const supabase = createClient();
-        let filePath: string;
-        if (recording.recordingType === "excuse") {
-          filePath = recording.excuse_recording_file_path || "";
-        } else {
-          filePath = recording.file_path || "";
-        }
-        if (!filePath) {
-          toast.error("No file path available for this recording.");
-          return;
-        }
-        const { data: urlData } = await supabase.storage
-          .from("audio-recordings")
-          .createSignedUrl(filePath, 3600);
-
-        if (urlData?.signedUrl) {
-          if (audioRef.current) {
-            audioRef.current.pause();
-          }
-
-          const audio = new Audio(urlData.signedUrl);
-          audioRef.current = audio;
-
-          audio.onended = () => setPlayingDisplayId(null);
-          audio.onerror = () => {
-            toast.error("Failed to load audio");
-            setPlayingDisplayId(null);
-          };
-
-          await audio.play();
-          setPlayingDisplayId(recording.displayId || null);
-        }
-      } catch (error) {
-        toast.error("Failed to play recording");
-      }
+      return;
     }
-  };
-
-  // Download recording
-  const downloadRecording = async (recording: Recording) => {
     try {
       const supabase = createClient();
-      let filePath: string, fileName: string;
-      if (recording.recordingType === "excuse") {
-        filePath = recording.excuse_recording_file_path || "";
-        fileName = recording.excuse_recording_file_name || "recording.mp4";
-      } else {
-        filePath = recording.file_path || "";
-        fileName = recording.file_name || "recording.mp4";
-      }
+      const filePath =
+        recording.recordingType === "excuse"
+          ? recording.excuse_recording_file_path
+          : recording.file_path;
       if (!filePath) {
         toast.error("No file path available for this recording.");
         return;
       }
-      const { data: urlData } = await supabase.storage
+      const { data } = await supabase.storage
         .from("audio-recordings")
         .createSignedUrl(filePath, 3600);
+      if (data?.signedUrl) {
+        if (audioRef.current) audioRef.current.pause();
+        const audio = new Audio(data.signedUrl);
+        audioRef.current = audio;
+        audio.onended = () => setPlayingDisplayId(null);
+        audio.onerror = () => {
+          toast.error("Failed to load audio");
+          setPlayingDisplayId(null);
+        };
+        await audio.play();
+        setPlayingDisplayId(recording.displayId || null);
+      }
+    } catch (err) {
+      toast.error("Failed to play recording");
+    }
+  }
 
-      if (urlData?.signedUrl) {
+  async function downloadRecording(recording: Recording) {
+    try {
+      const supabase = createClient();
+      const isExcuse = recording.recordingType === "excuse";
+      const filePath = isExcuse
+        ? recording.excuse_recording_file_path
+        : recording.file_path;
+      const fileName = isExcuse
+        ? recording.excuse_recording_file_name
+        : recording.file_name;
+      if (!filePath) {
+        toast.error("No file path available for this recording.");
+        return;
+      }
+      const { data } = await supabase.storage
+        .from("audio-recordings")
+        .createSignedUrl(filePath, 3600);
+      if (data?.signedUrl) {
         const link = document.createElement("a");
-        link.href = urlData.signedUrl;
-        link.download = fileName;
+        link.href = data.signedUrl;
+        link.download = fileName || "recording.mp4";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
-    } catch (error) {
+    } catch (err) {
       toast.error("Failed to download recording");
     }
-  };
+  }
 
-  // Format duration
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Format status badge
-  const getStatusBadge = (status: Recording["status"]) => {
-    const colors = {
-      in_progress: "bg-yellow-100 text-yellow-800",
-      success: "bg-green-100 text-green-800",
-      failed: "bg-red-100 text-red-800",
-    };
-
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status]}`}
-      >
-        {status.replace("_", " ")}
-      </span>
-    );
-  };
-
-  // Expand recordings into separate rows for each type
-  const expandedRecordings = recordings.flatMap((recording) => {
-    const rows = [];
-
-    // Add achievement row if data exists
-    if (recording.final_analysis) {
+  const expandedRecordings = recordings.flatMap((rec) => {
+    const rows: Recording[] = [] as any;
+    if (rec.final_analysis) {
       rows.push({
-        ...recording,
+        ...rec,
         recordingType: "achievement",
-        displayId: `${recording.id}-achievement`,
-        file_name: recording.file_name || "recording.mp4",
-        file_path: recording.file_path || "",
-        file_type: recording.file_type || "audio/mp4",
-        duration: recording.duration,
-        excuse_recording_file_name: recording.excuse_recording_file_name || "",
-        excuse_recording_file_path: recording.excuse_recording_file_path || "",
-        excuse_recording_file_type: recording.excuse_recording_file_type || "",
+        displayId: `${rec.id}-achievement`,
+        file_name: rec.file_name || "recording.mp4",
+        file_path: rec.file_path || "",
+        file_type: rec.file_type || "audio/mp4",
       });
     }
-
-    // Add excuse row if data exists
-    if (recording.excuse_recording_analysis) {
+    if (rec.excuse_recording_analysis) {
       rows.push({
-        ...recording,
+        ...rec,
         recordingType: "excuse",
-        displayId: `${recording.id}-excuse`,
-        file_name: recording.excuse_recording_file_name || "recording.mp4",
-        file_path: recording.excuse_recording_file_path || "",
-        file_type: recording.excuse_recording_file_type || "audio/mp4",
-        duration:
-          recording.excuse_recording_analysis?.total_working_hour ||
-          recording.duration,
-        excuse_recording_file_name:
-          recording.excuse_recording_file_name || "recording.mp4",
-        excuse_recording_file_path: recording.excuse_recording_file_path || "",
-        excuse_recording_file_type:
-          recording.excuse_recording_file_type || "audio/mp4",
+        displayId: `${rec.id}-excuse`,
+        file_name: rec.excuse_recording_file_name || "recording.mp4",
+        file_path: rec.excuse_recording_file_path || "",
+        file_type: rec.excuse_recording_file_type || "audio/mp4",
       });
     }
-
-    // Add legacy/processing row if no modern analysis
-    if (!recording.final_analysis && !recording.excuse_recording_analysis) {
+    if (!rec.final_analysis && !rec.excuse_recording_analysis) {
       rows.push({
-        ...recording,
-        recordingType: recording.analysis ? "legacy" : "processing",
-        displayId: `${recording.id}-${
-          recording.analysis ? "legacy" : "processing"
-        }`,
+        ...rec,
+        recordingType: rec.analysis ? "legacy" : "processing",
+        displayId: `${rec.id}-${rec.analysis ? "legacy" : "processing"}`,
       });
     }
-
     return rows;
   });
 
-  // Get type badge for single type
+  const filteredRecordings = expandedRecordings.filter((r) => {
+    const matchesSearch =
+      (r.file_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getUserEmail(r.user_uuid)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    const matchesType = typeFilter === "all" || r.recordingType === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const groupedMap = useMemo(() => {
+    const map = new Map<number, Recording[]>();
+    for (const rec of filteredRecordings) {
+      if (!map.has(rec.id)) map.set(rec.id, []);
+      map.get(rec.id)!.push(rec);
+    }
+    return map;
+  }, [filteredRecordings]);
+
+  const groupedEntries = useMemo(
+    () => Array.from(groupedMap.entries()),
+    [groupedMap]
+  );
+  const totalPages = Math.max(1, Math.ceil(groupedEntries.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const pagedEntries = useMemo(
+    () =>
+      groupedEntries.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+      ),
+    [groupedEntries, currentPage]
+  );
+
+  const pageWindow = useMemo(() => {
+    const maxButtons = 5;
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
+
   const getTypeBadge = (type: string) => {
     switch (type) {
       case "achievement":
@@ -362,38 +325,6 @@ export default function RecordingsPage() {
     }
   };
 
-  // Filter expanded recordings
-  const filteredRecordings = expandedRecordings.filter((recording) => {
-    const matchesSearch =
-      (recording.file_name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (recording.description || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      getUserEmail(recording.user_uuid)
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || recording.status === statusFilter;
-
-    const matchesType =
-      typeFilter === "all" || recording.recordingType === typeFilter;
-
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
-  // Group filtered recordings by original recording ID for visual grouping
-  const groupedRecordings = filteredRecordings.reduce((groups, recording) => {
-    const groupKey = recording.id;
-    if (!groups[groupKey]) {
-      groups[groupKey] = [];
-    }
-    groups[groupKey].push(recording);
-    return groups;
-  }, {} as Record<number, Recording[]>);
-
   return (
     <div className="w-full mx-auto py-12 px-4 md:px-4">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -409,7 +340,6 @@ export default function RecordingsPage() {
                 : "View and manage your voice recordings"}
             </p>
           </div>
-          {/* Show New Recording button for users who can record */}
           {(user?.role === "supervisor" || user?.role === "staff") && (
             <Link href="/upload-record">
               <Button
@@ -489,7 +419,7 @@ export default function RecordingsPage() {
         {/* Recordings Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Recordings ({filteredRecordings.length})</CardTitle>
+            <CardTitle>Recordings ({groupedEntries.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -498,7 +428,7 @@ export default function RecordingsPage() {
                   Loading recordings...
                 </span>
               </div>
-            ) : Object.keys(groupedRecordings).length === 0 ? (
+            ) : groupedEntries.length === 0 ? (
               <div className="text-center py-8 space-y-4">
                 <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== "all"
@@ -537,14 +467,13 @@ export default function RecordingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(groupedRecordings).map(
+                    {pagedEntries.map(
                       ([recordingId, recordingGroup], groupIndex) => (
                         <React.Fragment key={recordingId}>
-                          {/* Add spacing between groups */}
                           {groupIndex > 0 && (
                             <TableRow className="h-3">
                               <TableCell
-                                colSpan={5}
+                                colSpan={3}
                                 className="p-0 border-0"
                               ></TableCell>
                             </TableRow>
@@ -553,28 +482,28 @@ export default function RecordingsPage() {
                             <TableRow
                               key={recording.displayId}
                               className={`
-                                border-l border-r border-l-blue-200 border-r-blue-200 bg-blue-50/20
-                                ${
-                                  rowIndex === 0
-                                    ? "border-t border-t-blue-200 rounded-t-lg"
-                                    : ""
-                                }
-                                ${
-                                  rowIndex === recordingGroup.length - 1
-                                    ? "border-b border-b-blue-200 rounded-b-lg"
-                                    : ""
-                                }
-                                ${
-                                  recordingGroup.length === 1
-                                    ? "border border-blue-200 rounded-lg"
-                                    : ""
-                                }
-                                ${
-                                  recordingGroup.length > 1
-                                    ? "bg-blue-50/30"
-                                    : "bg-blue-50/20"
-                                }
-                              `}
+                              border-l border-r border-l-blue-200 border-r-blue-200 bg-blue-50/20
+                              ${
+                                rowIndex === 0
+                                  ? "border-t border-t-blue-200 rounded-t-lg"
+                                  : ""
+                              }
+                              ${
+                                rowIndex === recordingGroup.length - 1
+                                  ? "border-b border-b-blue-200 rounded-b-lg"
+                                  : ""
+                              }
+                              ${
+                                recordingGroup.length === 1
+                                  ? "border border-blue-200 rounded-lg"
+                                  : ""
+                              }
+                              ${
+                                recordingGroup.length > 1
+                                  ? "bg-blue-50/30"
+                                  : "bg-blue-50/20"
+                              }
+                            `}
                             >
                               <TableCell>
                                 <div>
@@ -593,8 +522,6 @@ export default function RecordingsPage() {
                                   recording.recordingType || "processing"
                                 )}
                               </TableCell>
-                              {/* Duration column removed */}
-                              {/* Created time column removed */}
                               <TableCell>
                                 <div className="flex space-x-2">
                                   <Button
@@ -665,6 +592,45 @@ export default function RecordingsPage() {
           </CardContent>
         </Card>
 
+        {/* Pagination Controls (bottom only) */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between max-w-6xl mx-auto">
+            <div className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                Prev
+              </Button>
+              {pageWindow.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Recording Details Modal */}
         {selectedRecording && (
           <Dialog
@@ -680,7 +646,6 @@ export default function RecordingsPage() {
                   <Label>File Name</Label>
                   <p className="text-sm">{selectedRecording.file_name}</p>
                 </div>
-
                 {canViewAllRecordings && (
                   <div>
                     <Label>User</Label>
@@ -689,37 +654,26 @@ export default function RecordingsPage() {
                     </p>
                   </div>
                 )}
-
                 <div>
                   <Label>Description</Label>
                   <p className="text-sm">
                     {selectedRecording.description || "No description provided"}
                   </p>
                 </div>
-
-                <div>
-                  <Label>Duration</Label>
-                  <p className="text-sm">
-                    {selectedRecording.duration
-                      ? formatDuration(selectedRecording.duration)
-                      : "Unknown"}
-                  </p>
-                </div>
-
                 <div>
                   <Label>Status</Label>
                   <div className="mt-1">
-                    {getStatusBadge(selectedRecording.status)}
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      {selectedRecording.status.replace("_", " ")}
+                    </span>
                   </div>
                 </div>
-
                 <div>
                   <Label>Created</Label>
                   <p className="text-sm">
                     {new Date(selectedRecording.created_at).toLocaleString()}
                   </p>
                 </div>
-
                 {selectedRecording.transcript && (
                   <div>
                     <Label>Transcript</Label>
@@ -728,7 +682,6 @@ export default function RecordingsPage() {
                     </p>
                   </div>
                 )}
-
                 {selectedRecording.analysis && (
                   <div>
                     <Label>Analysis</Label>
