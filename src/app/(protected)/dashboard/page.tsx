@@ -1,6 +1,7 @@
 "use client";
 import { SupervisorDashboard } from "@/src/components/dashboard/SupervisorDashboard";
 import { SupervisorProductivity } from "@/src/components/dashboard/SupervisorProductivity";
+import { Button } from "@/src/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { Button } from "@/src/components/ui/button";
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import {
@@ -159,8 +159,7 @@ export default function DashboardPage() {
         if (dateRange) {
           recordingsQuery = recordingsQuery
             .gte("created_at", `${dateRange.start}T00:00:00`)
-            .lte("created_at", `${dateRange.end}T23:59:59`)
-            .limit(20);
+            .lte("created_at", `${dateRange.end}T23:59:59`);
 
           recordingsCountQuery = recordingsCountQuery
             .gte("created_at", `${dateRange.start}T00:00:00`)
@@ -169,8 +168,6 @@ export default function DashboardPage() {
           targetsCountQuery = targetsCountQuery
             .gte("date", dateRange.start)
             .lte("date", dateRange.end);
-        } else {
-          recordingsQuery = recordingsQuery.limit(20);
         }
 
         const [
@@ -264,7 +261,8 @@ export default function DashboardPage() {
   }, [totalPages]);
 
   const pagedRecordings = useMemo(
-    () => recordings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    () =>
+      recordings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [recordings, currentPage]
   );
 
@@ -520,9 +518,9 @@ export default function DashboardPage() {
                       className="flex items-center justify-between mb-3 cursor-pointer"
                       title={`Recording ID: ${recording.id} | User: ${
                         recording.full_name || "Unknown"
-                      } (${recording.email || "No email"}) | Date: ${
-                        recordingDate
-                      } ${recordingTime}`}
+                      } (${
+                        recording.email || "No email"
+                      }) | Date: ${recordingDate} ${recordingTime}`}
                     >
                       <div className="flex items-center gap-2">
                         <FontAwesomeIcon
