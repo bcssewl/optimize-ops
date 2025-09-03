@@ -1,3 +1,4 @@
+import { Button } from "@/src/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,7 +19,7 @@ import {
   faUserShield,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Types for analysis data
 interface AnalysisData {
@@ -210,6 +211,8 @@ export function SupervisorDashboard() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [analysisData, setAnalysisData] = useState<AnalysisData[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     if (!user || loading) return;
@@ -249,8 +252,7 @@ export function SupervisorDashboard() {
         .eq("user_uuid", user.id)
         .eq("status", "success")
         .or("analysis.not.is.null,final_analysis.not.is.null")
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .order("created_at", { ascending: false });
 
       if (dateRange) {
         recordingsQuery = recordingsQuery
@@ -301,6 +303,27 @@ export function SupervisorDashboard() {
 
     setLoadingData(false);
   };
+
+  // Derived pagination values for recording targets list
+  const totalPages = Math.max(1, Math.ceil(recordings.length / PAGE_SIZE));
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const pagedRecordings = useMemo(
+    () =>
+      recordings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [recordings, currentPage]
+  );
+
+  const pageWindow = useMemo(() => {
+    const maxButtons = 5;
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
 
   // Calculate dynamic stats from analysis data
   const getTargetStats = () => {
@@ -395,7 +418,8 @@ export function SupervisorDashboard() {
   const recordingTargets = (() => {
     if (recordings.length === 0) return [];
 
-    return recordings.slice(0, 5).map((recording, recordingIndex) => {
+    const displayIndexBase = (currentPage - 1) * PAGE_SIZE;
+    return pagedRecordings.map((recording, recordingIndex) => {
       // Use new final_analysis field first, fallback to legacy analysis field
       const analysisArray = Array.isArray(recording.final_analysis?.analysis)
         ? recording.final_analysis.analysis
@@ -497,7 +521,7 @@ export function SupervisorDashboard() {
         recordingId: recording.id,
         recordingDate,
         recordingTime,
-        recordingTitle: `Recording ${recordingIndex + 1}`,
+        recordingTitle: `Recording ${displayIndexBase + recordingIndex + 1}`,
         targets,
       };
     });
@@ -949,6 +973,44 @@ export function SupervisorDashboard() {
                   })()}
               </div>
             ))}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  {pageWindow.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

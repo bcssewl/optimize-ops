@@ -278,8 +278,7 @@ export function SupervisorProductivity({
               averageAchievement: Math.round(user.averageAchievement),
             };
           })
-          .sort((a, b) => b.productivity - a.productivity) // Sort by productivity descending
-          .slice(0, 5); // Show top 5
+          .sort((a, b) => b.productivity - a.productivity); // Sort by productivity descending
 
         setSupervisorData(productivityData);
       } catch (error) {
