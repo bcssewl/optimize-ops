@@ -92,6 +92,9 @@ export default function TargetsPage() {
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [editingTarget, setEditingTarget] = useState<Target | null>(null);
   const [deletingTargetId, setDeletingTargetId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
+
   const form = useForm<AddTargetFormValues>({
     resolver: yupResolver(schema),
     defaultValues: { target_name: "", target_value: "" },
@@ -143,6 +146,26 @@ export default function TargetsPage() {
     };
     fetchData();
   }, []);
+
+  // Pagination derived values for users table
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const pagedUsers = useMemo(
+    () => users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [users, currentPage]
+  );
+
+  const pageWindow = useMemo(() => {
+    const maxButtons = 5;
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
 
   const handleAddTarget = async (values: AddTargetFormValues) => {
     if (!modalUser) return;
@@ -284,7 +307,7 @@ export default function TargetsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user) => {
+                pagedUsers.map((user) => {
                   const userTargets = getUserTargets(user.uuid);
                   return (
                     <TableRow key={user.id}>
@@ -578,6 +601,42 @@ export default function TargetsPage() {
           </Table>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </Button>
+            {pageWindow.map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Target Modal */}
       <Dialog
