@@ -28,7 +28,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import { faEdit, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -59,6 +59,8 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -103,6 +105,28 @@ export default function UsersPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Pagination derived values
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+
+  useEffect(() => {
+    // Clamp page in case data size changes
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const pagedUsers = useMemo(
+    () => users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [users, currentPage]
+  );
+
+  const pageWindow = useMemo(() => {
+    const maxButtons = 5;
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
 
   // Handle form submit (create or update)
   const onSubmit = async (values: FormValues) => {
@@ -232,7 +256,7 @@ export default function UsersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user) => (
+              pagedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
@@ -296,6 +320,42 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </Button>
+            {pageWindow.map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Edit User Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
