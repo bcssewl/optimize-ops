@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
+import { Button } from "@/src/components/ui/button";
 import { useAuth } from "@/src/context/AuthContext";
 import { createClient } from "@/src/lib/supabase/client";
 import {
@@ -19,7 +20,7 @@ import {
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Types for analysis data
 interface AnalysisData {
@@ -125,6 +126,8 @@ export default function DashboardPage() {
   const [analysisData, setAnalysisData] = useState<AnalysisData[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     if (!user || loading) return;
@@ -252,7 +255,27 @@ export default function DashboardPage() {
       setStatsLoading(false);
     };
     fetchStats();
-  }, [user, loading, dateFilter]); // Added dateFilter as dependency
+  }, [user, loading, dateFilter]);
+
+  // Derived pagination values for recent analysis list
+  const totalPages = Math.max(1, Math.ceil(recordings.length / PAGE_SIZE));
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const pagedRecordings = useMemo(
+    () => recordings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [recordings, currentPage]
+  );
+
+  const pageWindow = useMemo(() => {
+    const maxButtons = 5;
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
 
   // Calculate analytics from analysis data for admin/manager
   const getAnalytics = () => {
@@ -456,7 +479,7 @@ export default function DashboardPage() {
           </div>
           {recordings.length > 0 ? (
             <div className="space-y-6">
-              {recordings.slice(0, 10).map((recording, recordingIndex) => {
+              {pagedRecordings.map((recording, recordingIndex) => {
                 // Use new final_analysis field first, fallback to legacy analysis field
                 const analysisArray = Array.isArray(
                   recording.final_analysis?.analysis
@@ -485,6 +508,7 @@ export default function DashboardPage() {
                   hour: "2-digit",
                   minute: "2-digit",
                 });
+                const displayIndexBase = (currentPage - 1) * PAGE_SIZE;
 
                 return (
                   <div
@@ -496,9 +520,9 @@ export default function DashboardPage() {
                       className="flex items-center justify-between mb-3 cursor-pointer"
                       title={`Recording ID: ${recording.id} | User: ${
                         recording.full_name || "Unknown"
-                      } (${
-                        recording.email || "No email"
-                      }) | Date: ${recordingDate} ${recordingTime}`}
+                      } (${recording.email || "No email"}) | Date: ${
+                        recordingDate
+                      } ${recordingTime}`}
                     >
                       <div className="flex items-center gap-2">
                         <FontAwesomeIcon
@@ -508,7 +532,7 @@ export default function DashboardPage() {
                           className="text-blue-600"
                         />
                         <span className="font-medium text-gray-800">
-                          Recording {recordingIndex + 1}
+                          Recording {displayIndexBase + recordingIndex + 1}
                         </span>
                         {recording.full_name && (
                           <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
@@ -761,6 +785,44 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    {pageWindow.map((page) => (
+                      <Button
+                        key={page}
+                        variant={page === currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
